@@ -1,3 +1,4 @@
+from typing import Tuple
 import matplotlib.pyplot as plt
 from seaborn import heatmap
 
@@ -24,7 +25,8 @@ class ConfusionMatrixPlot:
             fig, ax_in_plot = plt.subplots(
                 nrows=1,
                 ncols=1,
-                dpi=self.plot_dpi
+                dpi=self.plot_dpi,
+                figsize=(10,10)
             )
 
             dev_name = i[0]
@@ -53,22 +55,33 @@ class ConfusionMatrixPlot:
 
         return None
 
-    def proportional_confusion_matrix_plot(self):
+    def proportional_confusion_matrix_plot(self, annot_fontsize=None, figsize: Tuple[int, int] = None):
         """
         Plot proportional confusion matrix.
 
         Uses self.proportional_confusion_matrix
         property created in confusion_matrix.ConfusionMatrix
-
         Parameters
         ----------
-        self
+        annot_fontsize
+        Allows to adjust the dimension of the font in heatmap's annotations.
+        figsize : tuple(int, int)
+        Allows to modify the dimension of the figure in matplotlib.pyplot.subplots
 
         Returns
         -------
-        None
 
         """
+        if annot_fontsize is None:
+            annot_fontsize = 'medium'
+        else:
+            pass
+
+        if figsize is None:
+            figsize = (6.4, 4.8) # matplotlib.pyplot default
+        else:
+            pass
+
         proportional_confusion_matrix = self.proportional_confusion_matrix
         for i in proportional_confusion_matrix:
             dev_name = i[0]
@@ -78,7 +91,7 @@ class ConfusionMatrixPlot:
             fig, ax_in_plot = plt.subplots(
                 nrows=1,
                 ncols=1,
-                figsize=(11, 9),
+                figsize=figsize,
                 dpi=self.plot_dpi
             )
 
@@ -87,7 +100,7 @@ class ConfusionMatrixPlot:
                 annot=annot,
                 cmap="Blues",
                 fmt='',
-                annot_kws={"fontsize": "small", "in_layout": True},
+                annot_kws={"fontsize": annot_fontsize, "in_layout": True},
                 square=True,
                 linewidths=0.4,
                 ax=ax_in_plot
