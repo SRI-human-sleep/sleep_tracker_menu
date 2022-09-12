@@ -10,6 +10,8 @@ from confusion_matrix.confusion_matrix import ConfusionMatrix
 from sleep_parameters.sleep_parameters import SleepParameters
 from bland_altman.bland_altman_plot import BlandAltmanPlot
 from performance_metrics.performance_metrics import PerformanceMetrics
+
+from utils.sanity_check import sanity_check
 from utils.save_directory_generation import save_directory_generation
 
 
@@ -23,6 +25,7 @@ class SleepTrackerMenu(
             reference_col: Text,
             device_col: List,
             save_path: Text,
+            drop_wrong_labels: bool = True,
             sleep_scoring: TypedDict = None,
             sleep_stages: TypedDict = None,
             epoch_length: int = 30,
@@ -41,6 +44,11 @@ class SleepTrackerMenu(
                 a column containing the reference, and columns
                 containing data collected by device(s) under
                 investigation.
+            drop_wrong_labels: bool
+                if True, the function checks for any wrong value
+                passed with file and values are dropped. If false,
+                values are not dropped but the routine might run
+                into errors.
             id_col: Text
                 header of the id column.
             reference_col: Text
@@ -90,7 +98,7 @@ class SleepTrackerMenu(
                 confidence interval calculation through
                 evaluation.
         """
-        self.file = file
+        self.file, self.wrong_epochs = sanity_check(file, sleep_scoring, reference_col, device_col, drop_wrong_labels)
         self.id = id_col
 
         self.reference = self.file.loc[:, [id_col, reference_col]]
