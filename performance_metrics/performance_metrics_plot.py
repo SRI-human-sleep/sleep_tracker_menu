@@ -68,7 +68,7 @@ class PerformanceMetricsPlot:
                 plt.show(block=True)
         return None
 
-    def boxplot_swarmplot_performance_metrics_each_device(self):
+    def boxplot_swarmplot_performance_metrics_each_device(self, size=None):
         """
         Plots the boxplot with the
         corresponding swarmplot superimposed.
@@ -88,6 +88,10 @@ class PerformanceMetricsPlot:
         -------
         None
         """
+        if size is None:
+            size = 5 # seaborn default
+        else:
+            pass
         df_to_plot = self.performance_metrics_each_sleep_stage
 
         device_level = set(df_to_plot.index.get_level_values("device"))
@@ -117,7 +121,8 @@ class PerformanceMetricsPlot:
                 swarmplot(
                     edgecolors="white",
                     ax=ax_to_plot,
-                    data=to_boxplot
+                    data=to_boxplot,
+                    size=size
                 )
 
                 ax_to_plot.set_ylim(0, 1.2)

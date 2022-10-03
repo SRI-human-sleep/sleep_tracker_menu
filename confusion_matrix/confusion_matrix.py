@@ -190,6 +190,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             individual level confusion matrix.
 
             """
+
             to_individual_level_matrix = to_individual_level_matrix[1]
             # pd.DataFrame to individual matrix
 

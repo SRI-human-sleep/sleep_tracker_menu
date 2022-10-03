@@ -36,13 +36,18 @@ class PerformanceMetrics(PerformanceMetricsPlot):
              Calculated metrics
 
         """
+        reference = self.reference
+        device = self.device
+
         metrics_function = self._PerformanceMetrics__metrics_calculation_single_participant
         metrics_overall = map(
-            lambda x, y: (self._PerformanceMetrics__metrics_calculation_each_device(
-                x, y.iloc[:, -1], metrics_function, self.id)
+            lambda ref, dev: (
+                self._PerformanceMetrics__metrics_calculation_each_device(
+                    ref, dev.iloc[:, -1], metrics_function, self.id
+                )
             ),
-            repeat(self.reference),
-            self.device
+            repeat(reference),
+            device
             )
 
         metrics_overall = pd.concat(metrics_overall, axis=0)
@@ -71,12 +76,13 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         id_col = self.id
         reference = self.reference
         device = self.device
+
         metrics_each_sleep_stage = map(
-            lambda x, y: (self._PerformanceMetrics__metrics_calculation_each_device(
-                x,
-                y.iloc[:, -1],
+            lambda ref, dev: (self._PerformanceMetrics__metrics_calculation_each_device(
+                ref,
+                dev.iloc[:, -1],
                 self._PerformanceMetrics__metrics_calculation_single_participant,
-                self.id,
+                id_col,
                 sleep_stage=True
             )
             ),
@@ -108,16 +114,16 @@ class PerformanceMetrics(PerformanceMetricsPlot):
          Parameters
          ----------
          reference_to_metrics : Text
-         self.reference
+             self.reference
 
          device_to_metrics : pd.DataFrame
-         one element of self.device
-         (function applied to each element by iteration)
+             one element of self.device
+             (function applied to each element by iteration)
 
          metrics_func : Callable
 
          idc : Text
-         self.id
+            self.id
 
          sleep_stage:bool = False
             if True, metrics are calculated for each
@@ -131,10 +137,7 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
          """
         device_name = str(device_to_metrics.name)
-        to_metrics = pd.concat(
-            [reference_to_metrics, device_to_metrics],
-            axis=1
-        )
+        to_metrics = pd.concat([reference_to_metrics, device_to_metrics], axis=1)
 
         if sleep_stage is True:
 
@@ -143,18 +146,23 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
                 sleep_metrics = to_single_stage_performance_evaluation(to_metrics, i[0], idc)
 
-                metrics_overall = metrics_func("all", sleep_metrics, idc, sleep_stage=True)
+                try:
+                    [i for i in set(sleep_metrics) if i != "Any"][0]
 
-                metrics_single_participant = map(
-                    lambda x: metrics_func(x[0], x[1], idc, sleep_stage=True),
-                    sleep_metrics.groupby(idc)
-                )
-                metrics_single_participant = pd.concat(metrics_single_participant)
+                    metrics_overall = metrics_func("all", sleep_metrics, idc, sleep_stage=True)
+                    metrics_single_participant = map(
+                        lambda x: metrics_func(x[0], x[1], idc, sleep_stage=True),
+                        sleep_metrics.groupby(idc)
+                    )
+                    metrics_single_participant = pd.concat(metrics_single_participant)
 
-                to_append = pd.concat([metrics_single_participant, metrics_overall], axis=0)
-                metrics_output.append(to_append)
+                    to_append = pd.concat([metrics_single_participant, metrics_overall], axis=0)
+                    metrics_output.append(to_append)
+                except IndexError:
+                    pass
 
-            metrics_output = pd.concat(metrics_output,axis=1)
+
+            metrics_output = pd.concat(metrics_output, axis=1)
 
         else:
             metrics_overall = metrics_func("all", to_metrics, idc)
@@ -185,13 +193,13 @@ class PerformanceMetrics(PerformanceMetricsPlot):
          Parameters
          ----------
          participant_id : Text
-         participant_id
+             participant_id
 
          to_metrics : pd.DataFrame
-         Dataframe on which metrics will be calculated
+             Dataframe on which metrics will be calculated
 
          id_column : Text
-         self.id
+            self.id
 
          sleep_stage: bool = False
             only used if metrics_calculation_single_participant
@@ -203,12 +211,12 @@ class PerformanceMetrics(PerformanceMetricsPlot):
              Calculated metrics
 
          """
-
         y_reference = to_metrics.iloc[:, 1]
         y_device = to_metrics.iloc[:, 2]
 
         if sleep_stage is True:
             stage_name = set(y_reference)
+
             stage_name = [i for i in stage_name if i != "Any"][0]
         else:
             pass
@@ -225,8 +233,6 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         tn = conf_matrix.sum() - (tp + fp + fn)  # true negative
 
         if np.shape(conf_matrix)[1] == 2 and sleep_stage is True:
-
-            specificity = tn/(tn+fp)
 
             metrics_output = pd.DataFrame(
                 {
@@ -291,10 +297,10 @@ class PerformanceMetrics(PerformanceMetricsPlot):
                         y_true=y_reference,
                         y_pred=y_device
                     ),
-                    "NPV": pd.Series(
-                        tn / (tn + fn),
-                        name="NPV"
-                    ),
+                    # "NPV": pd.Series(
+                    #     tn / (tn + fn),
+                    #     name="NPV"
+                    # ),
                     "PPV_micro": precision_score(
                         y_true=y_reference,
                         y_pred=y_device,
@@ -305,10 +311,10 @@ class PerformanceMetrics(PerformanceMetricsPlot):
                         y_pred=y_device,
                         average="macro"
                     ),
-                    "specificity": pd.Series(
-                        tn / (tn + fp),
-                        name="NPV"
-                    )
+                    # "specificity": pd.Series(
+                    #     tn / (tn + fp),
+                    #     name="NPV"
+                    # )
                 },
                 index=[0]
             )
