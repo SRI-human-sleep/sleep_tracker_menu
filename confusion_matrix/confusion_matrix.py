@@ -1,6 +1,6 @@
 from itertools import repeat
 from typing import List, Text, Tuple
-from functools import cached_property
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
@@ -12,7 +12,7 @@ from utils.confidence_interval import confidence_interval_calculation
 
 class ConfusionMatrix(ConfusionMatrixPlot):
 
-        @cached_property
+        @property
         def absolute_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
             """
             Calculates the absolute confusion matrix.
@@ -40,7 +40,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             )
             return absolute_confusion_matrix
 
-        @cached_property
+        @property
         def proportional_confusion_matrix(self) -> List[Tuple[Text, Tuple[pd.DataFrame, pd.DataFrame]]]:
             """
             Calculates the proportional confusion matrix.

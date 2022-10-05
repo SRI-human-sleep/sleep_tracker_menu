@@ -1,5 +1,4 @@
 from itertools import repeat
-from functools import cached_property
 from typing import Callable, Text
 
 import numpy as np
@@ -21,7 +20,7 @@ from utils.performance_metrics import to_single_stage_performance_evaluation
 
 class PerformanceMetrics(PerformanceMetricsPlot):
 
-    @cached_property
+    @property
     def performance_metrics_overall(self) -> pd.DataFrame:
         """
         for each device, the following  metrics are here calculated:
@@ -58,7 +57,7 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
         return metrics_overall
 
-    @cached_property
+    @property
     def performance_metrics_each_sleep_stage(self) -> pd.DataFrame:
         """
         for each device and participant, the following
