@@ -15,7 +15,7 @@ from sklearn.metrics import (
 )
 
 from performance_metrics.performance_metrics_plot import PerformanceMetricsPlot
-from utils.to_single_stage_performance_evaluation import to_single_stage_performance_evaluation
+from utils.performance_metrics import to_single_stage_performance_evaluation
 
 
 class PerformanceMetrics(PerformanceMetricsPlot):
