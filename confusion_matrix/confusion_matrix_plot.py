@@ -4,7 +4,7 @@ from seaborn import heatmap
 
 
 class ConfusionMatrixPlot:
-    def absolute_confusion_matrix_plot(self):
+    def absolute_confusion_matrix_plot(self, annot_fontsize=None, figsize: Tuple[int, int] = None):
         """
         Plots absoulte confusion matrix.
 
@@ -26,7 +26,7 @@ class ConfusionMatrixPlot:
                 nrows=1,
                 ncols=1,
                 dpi=self.plot_dpi,
-                figsize=(10,10)
+                figsize=figsize
             )
 
             dev_name = i[0]
@@ -35,9 +35,11 @@ class ConfusionMatrixPlot:
             heatmap(
                 to_abs_conf_matrix,
                 annot=True,
-                ax=ax_in_plot,
-                cmap="Blues",
-                fmt='g'
+                fmt='g',
+                annot_kws={"fontsize": annot_fontsize, "in_layout": True},
+                square=True,
+                linewidths=0.4,
+                ax=ax_in_plot
             )
 
             ax_in_plot.set_ylabel(self._reference_col)
@@ -78,7 +80,7 @@ class ConfusionMatrixPlot:
             pass
 
         if figsize is None:
-            figsize = (6.4, 4.8) # matplotlib.pyplot default
+            figsize = (6.4, 4.8)  # matplotlib.pyplot default
         else:
             pass
 
