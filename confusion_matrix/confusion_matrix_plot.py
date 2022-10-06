@@ -4,7 +4,14 @@ from seaborn import heatmap
 
 
 class ConfusionMatrixPlot:
-    def absolute_confusion_matrix_plot(self, annot_fontsize=None, figsize: Tuple[int, int] = None):
+    def absolute_confusion_matrix_plot(
+            self,
+            annot_fontsize=None,
+            figsize: Tuple[int, int]=None,
+            cmap_colors:str='Blues',
+            axis_label_fontsize: str=11,
+            axis_ticks_fontsize: int=13
+    ):
         """
         Plots absoulte confusion matrix.
 
@@ -36,15 +43,16 @@ class ConfusionMatrixPlot:
                 to_abs_conf_matrix,
                 annot=True,
                 fmt='g',
+                cmap=cmap_colors,
                 annot_kws={"fontsize": annot_fontsize, "in_layout": True},
                 square=True,
                 linewidths=0.4,
                 ax=ax_in_plot
             )
 
-            ax_in_plot.set_ylabel(self._reference_col)
+            ax_in_plot.set_ylabel(self._reference_col, fontsize=axis_label_fontsize)
 
-            ax_in_plot.set_xlabel(dev_name)
+            ax_in_plot.set_xlabel(dev_name, fontsize=axis_label_fontsize)
 
             plt.tight_layout()
 
@@ -62,7 +70,10 @@ class ConfusionMatrixPlot:
             annot_fontsize=None,
             figsize: Tuple[int, int] = None,
             title_text: str = '',
-            title_fontsize: int = 10
+            title_fontsize: int = 10,
+            cmap_colors: str="Blues",
+            axis_label_fontsize: int =11,
+            axis_ticks_fontsize: int=13
     ):
         """
         Plot proportional confusion matrix.
@@ -106,7 +117,7 @@ class ConfusionMatrixPlot:
             heatmap(
                 mean,
                 annot=annot,
-                cmap="Blues",
+                cmap=cmap_colors,
                 fmt='',
                 annot_kws={"fontsize": annot_fontsize, "in_layout": True},
                 square=True,
@@ -114,11 +125,11 @@ class ConfusionMatrixPlot:
                 ax=ax_in_plot
             )
 
-            plt.xticks(fontsize="xx-large")
+            plt.xticks(fontsize=axis_ticks_fontsize)
             ax_in_plot.set_xlabel(dev_name, fontsize="xx-large")
 
-            plt.yticks(fontsize="xx-large")
-            ax_in_plot.set_ylabel(self._reference_col, fontsize="xx-large")
+            plt.yticks(fontsize=axis_ticks_fontsize)
+            ax_in_plot.set_ylabel(self._reference_col, fontsize=axis_label_fontsize)
 
             savepath = self._savepath_proportional_confusion_matrix_plot + f"_{dev_name}.png"
 
