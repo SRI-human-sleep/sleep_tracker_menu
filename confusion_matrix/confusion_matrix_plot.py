@@ -54,6 +54,10 @@ class ConfusionMatrixPlot:
 
             ax_in_plot.set_xlabel(dev_name, fontsize=axis_label_fontsize)
 
+            plt.xticks(fontsize=axis_ticks_fontsize)
+            plt.yticks(fontsize=axis_ticks_fontsize)
+
+
             plt.tight_layout()
 
             plt.savefig(
