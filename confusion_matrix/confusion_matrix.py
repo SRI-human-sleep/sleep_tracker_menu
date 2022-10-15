@@ -13,7 +13,7 @@ from utils.confidence_interval import confidence_interval_calculation
 class ConfusionMatrix(ConfusionMatrixPlot):
 
         @property
-        def absolute_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
+        def standard_absolute_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
             """
             Calculates the absolute confusion matrix.
 
@@ -29,16 +29,53 @@ class ConfusionMatrix(ConfusionMatrixPlot):
 
             """
             labels_to_confusion = [self.sleep_scoring.get("Wake")] + self.sleep_scoring.get("Sleep")
-            absolute_confusion_matrix = list(
+            standard_absolute_confusion_matrix = list(
                 map(
-                    self._ConfusionMatrix__absolute_confusion_matrix_each_device,
+                    self._ConfusionMatrix__standard_confusion_matrix_each_device,
                     repeat(self.reference),
                     self.device,
                     repeat(labels_to_confusion),
-                    repeat(self._savepath_absolute_confusion_matrix_xlsx)
+                    repeat(self._savepath_standard_absolute_confusion_matrix_xlsx),
+                    repeat(True)
                 )
             )
-            return absolute_confusion_matrix
+            return standard_absolute_confusion_matrix
+
+        @property
+        def standard_normalized_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
+            """
+            Calculates the absolute confusion matrix.
+
+            Parameters
+            ----------
+            self
+
+            Returns
+            -------
+            List[Tuple[Text, pd.DataFrame]]
+
+            confusion matrix for each device
+
+            """
+            labels_to_confusion = [self.sleep_scoring.get("Wake")] + self.sleep_scoring.get("Sleep")
+            standard_normalized_confusion_matrix = list(
+                map(
+                    self._ConfusionMatrix__standard_confusion_matrix_each_device,
+                    repeat(self.reference),
+                    self.device,
+                    repeat(labels_to_confusion),
+                    repeat(self._savepath_standard_normalized_confusion_matrix_xlsx),
+                    repeat(False)
+                )
+            )
+
+            standard_normalized_confusion_matrix = list(
+                map(
+                    lambda x: (x[0], x[1].round(self.digit)),
+                    standard_normalized_confusion_matrix
+                    )
+            )
+            return standard_normalized_confusion_matrix
 
         @property
         def proportional_confusion_matrix(self) -> List[Tuple[Text, Tuple[pd.DataFrame, pd.DataFrame]]]:
@@ -114,11 +151,12 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             return output
 
         @staticmethod
-        def __absolute_confusion_matrix_each_device(
+        def __standard_confusion_matrix_each_device(
                 ref: pd.DataFrame,
                 dev: pd.DataFrame,
                 labels_to_confusion: List[Text],
-                save_path: Text
+                save_path: Text,
+                absolute: bool = True
         ):
             """
             Calculates confusion matrix for each device
@@ -146,21 +184,31 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             dev_name = dev.columns[-1]
             dev = dev.iloc[:, -1]
 
-            abs_confusion_matrix = confusion_matrix(
-                y_true=ref,
-                y_pred=dev,
-                labels=labels_to_confusion
-            )
-            abs_confusion_matrix = pd.DataFrame(
-                abs_confusion_matrix,
+            if absolute is True:
+                standard_confusion_matrix = confusion_matrix(
+                    y_true=ref,
+                    y_pred=dev,
+                    labels=labels_to_confusion,
+                    normalize=None
+                )
+            else:
+                standard_confusion_matrix = confusion_matrix(
+                    y_true=ref,
+                    y_pred=dev,
+                    labels=labels_to_confusion,
+                    normalize='true'
+                )
+
+            standard_confusion_matrix = pd.DataFrame(
+                standard_confusion_matrix,
                 columns=labels_to_confusion,
                 index=labels_to_confusion
             )
 
             save_path = save_path + f'_{dev_name}.xlsx'
-            abs_confusion_matrix.to_excel(save_path)
+            standard_confusion_matrix.to_excel(save_path)
 
-            return dev_name, abs_confusion_matrix
+            return dev_name, standard_confusion_matrix
 
         @staticmethod
         def __individual_level_matrix_calculation(

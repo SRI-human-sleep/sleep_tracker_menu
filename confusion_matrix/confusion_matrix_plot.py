@@ -4,10 +4,13 @@ from seaborn import heatmap
 
 
 class ConfusionMatrixPlot:
-    def absolute_confusion_matrix_plot(
+    def standard_confusion_matrix_plot(
             self,
+            absolute=True,
             annot_fontsize=None,
             figsize: Tuple[int, int]=None,
+            title_text: str = '',
+            title_fontsize: int = 10,
             cmap_colors:str='Blues',
             axis_label_fontsize: str=11,
             axis_ticks_fontsize: int=13
@@ -27,8 +30,12 @@ class ConfusionMatrixPlot:
         None
 
         """
-        absolute_confusion_matrix = self.absolute_confusion_matrix
-        for i in absolute_confusion_matrix:
+        if absolute is True:
+            confusion_matrix_to_plot = self.standard_absolute_confusion_matrix
+        else:
+            confusion_matrix_to_plot = self.standard_normalized_confusion_matrix
+
+        for i in confusion_matrix_to_plot:
             fig, ax_in_plot = plt.subplots(
                 nrows=1,
                 ncols=1,
@@ -42,7 +49,7 @@ class ConfusionMatrixPlot:
             heatmap(
                 to_abs_conf_matrix,
                 annot=True,
-                fmt='g',
+                fmt='.70g',
                 cmap=cmap_colors,
                 annot_kws={"fontsize": annot_fontsize, "in_layout": True},
                 square=True,
@@ -57,14 +64,21 @@ class ConfusionMatrixPlot:
             plt.xticks(fontsize=axis_ticks_fontsize)
             plt.yticks(fontsize=axis_ticks_fontsize)
 
+            plt.title(title_text, fontsize=title_fontsize)
+
 
             plt.tight_layout()
 
-            plt.savefig(
-                f'{self._savepath_absolute_confusion_matrix_plot}_{dev_name}.png',
-                dpi=self.plot_dpi
-            )
-
+            if absolute is True:
+                plt.savefig(
+                    f'{self._savepath_standard_absolute_confusion_matrix_plot}_{dev_name}.png',
+                    dpi=self.plot_dpi
+                )
+            else:
+                plt.savefig(
+                    f'{self._savepath_standard_normalized_confusion_matrix_plot}_{dev_name}.png',
+                    dpi=self.plot_dpi
+                )
             plt.show(block=True)
 
         return None
@@ -130,7 +144,7 @@ class ConfusionMatrixPlot:
             )
 
             plt.xticks(fontsize=axis_ticks_fontsize)
-            ax_in_plot.set_xlabel(dev_name, fontsize="xx-large")
+            ax_in_plot.set_xlabel(dev_name, fontsize=axis_label_fontsize)
 
             plt.yticks(fontsize=axis_ticks_fontsize)
             ax_in_plot.set_ylabel(self._reference_col, fontsize=axis_label_fontsize)

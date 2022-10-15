@@ -40,7 +40,11 @@ class BlandAltmanPlot:
 
         device_to_scatter = device_to_scatter.replace({-inf: nan})
 
-        y_limits = self._BlandAltmanPlot__y_limits_calculation(device_to_scatter, bland_parameters, augmenting_factor_ylimits)
+        y_limits = self._BlandAltmanPlot__y_limits_calculation(
+            device_to_scatter,
+            bland_parameters,
+            augmenting_factor_ylimits
+        )
         # used later to force y_limits around the 0 axis.
 
         if device_to_plot is None:
@@ -68,7 +72,7 @@ class BlandAltmanPlot:
         sns.set_style("darkgrid")
 
         to_append = []
-        for i in device_to_scatter.iteritems():
+        for i in device_to_scatter.items():
             dev_name = i[0]
             dev_to_plot = i[1]  # gets the series resulting from iteritems
 
@@ -77,7 +81,7 @@ class BlandAltmanPlot:
 
                 unit_of_measurement = self._BlandAltmanPlot__unit_of_measurment_to_labels(par_name)
                 # parameter processed is automatically detected. it's unit
-                # measurment is here assigned to be depicted in x and y labels.
+                # measurement is here assigned to be depicted in x and y labels.
 
                 par_to_plot = j[1].droplevel(level=1, axis=0)
                 # parameter to plot.
@@ -88,7 +92,8 @@ class BlandAltmanPlot:
                 else:
                     pass
 
-                proportional_bias, heteroskedasticity = self._BlandAltmanPlot__proportional_bias_heteroskedasticity_testing(
+                proportional_bias, heteroskedasticity = \
+                    self._BlandAltmanPlot__proportional_bias_heteroskedasticity_testing(
                     par_to_plot,
                     ref_to_plot,
                     confidence_level
@@ -375,7 +380,7 @@ class BlandAltmanPlot:
         y_limits_parameters = pd.concat(
             map(
                 y_limits_calculation_device_parameters,
-                bland_parameters_in.iteritems()
+                bland_parameters_in.items()
             )
         )
         y_limits = pd.concat([y_limits_device, y_limits_parameters], axis=1)
@@ -435,11 +440,11 @@ class BlandAltmanPlot:
         exog = results.model.exog
         params = results.params
 
-        alpha_to_confint = 1 - conf_level
+        alpha_to_ci = 1 - conf_level
 
-        lower_confint = results.conf_int(alpha=alpha_to_confint)[0][0]
-        higher_confint = results.conf_int(alpha=alpha_to_confint)[1][0]
-        if lower_confint > 0 or higher_confint < 0: # proportional_bias was
+        lower_confint = results.conf_int(alpha=alpha_to_ci)[0][0]
+        higher_confint = results.conf_int(alpha=alpha_to_ci)[1][0]
+        if lower_confint > 0 or higher_confint < 0:  # proportional_bias was
             # found. the function will return parameters to plot
             # bias and loas taking into account the proportional_bias.
 

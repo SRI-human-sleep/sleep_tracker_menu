@@ -4,7 +4,7 @@ from typing import Text
 import pandas as pd
 from numpy import nan, nanmean, nanstd
 
-from utils.confidence_interval import confidence_interval_calculation
+from utils.confidence_interval import confidence_interval_calculation, loa_ci_calculation, bias_ci_calculation
 
 
 class BlandAltman:
@@ -224,65 +224,89 @@ class BlandAltman:
         # bias and bias' ci calculation
         bias = diff_bland.mean()
         bias.name = 'bias'
+        std = diff_bland.std()
 
-        # noinspection PyTypeChecker
-        bias_ci = pd.concat(
-            map(
-                lambda x: confidence_interval_calculation(
-                    to_ci=pd.DataFrame(x[1]),
-                    stage_device_name=x[0],
-                    function_to_ci=nanmean,
-                    return_annot_df=False,
-                    ci_level=ci_level,
-                    ci_bootstrapping=ci_bootstrapping,
-                    boot_method=boot_method,
-                    boot_n_resamples=boot_n_resamples
+        if ci_bootstrapping is True:
+            bias_ci = pd.concat(
+                map(
+                    lambda x: confidence_interval_calculation(
+                        to_ci=pd.DataFrame(x[1]),
+                        stage_device_name=x[0],
+                        function_to_ci=nanmean,
+                        return_annot_df=False,
+                        ci_level=ci_level,
+                        ci_bootstrapping=ci_bootstrapping,
+                        boot_method=boot_method,
+                        boot_n_resamples=boot_n_resamples
+                    ),
+                    diff_bland.iteritems()
                 ),
-                diff_bland.iteritems()
-            ),
-            axis=0
-        )
+                axis=0
+            )
+        else:
+            bias_ci = bias_ci_calculation(
+                bias=bias,
+                std=std,
+                length_of_array=diff_bland.size,
+                ci_level=ci_level
+            )
+
         bias_ci.columns = [f"bias_ci_{i}" for i in bias_ci.columns]
 
         # calculation of limits of agreement
-        std = diff_bland.std()
         upper_loa = bias + 1.96 * std
         upper_loa.name = "upper_loa"
         lower_loa = bias - 1.96 * std
         lower_loa.name = "lower_loa"
 
-        # noinspection PyTypeChecker
-        upper_loa_ci = pd.concat(
-            map(
-                lambda x: confidence_interval_calculation(
-                    to_ci=pd.DataFrame(x[1]),
-                    stage_device_name=x[0],
-                    function_to_ci=lambda y: nanmean(y) + 1.96 * nanstd(y),
-                    ci_level=ci_level,
-                    ci_bootstrapping=ci_bootstrapping,
-                    boot_method=boot_method,
-                    boot_n_resamples=boot_n_resamples
-                ),
-                diff_bland.iteritems()
+        if ci_bootstrapping is True:
+            upper_loa_ci = pd.concat(
+                map(
+                    lambda x: confidence_interval_calculation(
+                        to_ci=pd.DataFrame(x[1]),
+                        stage_device_name=x[0],
+                        function_to_ci=lambda y: nanmean(y) + 1.96 * nanstd(y),
+                        ci_level=ci_level,
+                        ci_bootstrapping=ci_bootstrapping,
+                        boot_method=boot_method,
+                        boot_n_resamples=boot_n_resamples
+                    ),
+                    diff_bland.iteritems()
+                )
             )
-        )
+        else:
+            upper_loa_ci = loa_ci_calculation(
+                loa=upper_loa,
+                bias=bias,
+                std=std,
+                length_of_array=diff_bland.size,
+                ci_level=ci_level
+            )
         upper_loa_ci.columns = [f"upper_loa_{i}" for i in upper_loa_ci.columns]
 
-        # noinspection PyTypeChecker
-        lower_loa_ci = pd.concat(
-            map(
-                lambda x: confidence_interval_calculation(
-                    to_ci=pd.DataFrame(x[1]),
-                    stage_device_name=x[0],
-                    function_to_ci=lambda y: nanmean(y) - 1.96 * nanstd(y),
-                    ci_level=ci_level,
-                    ci_bootstrapping=ci_bootstrapping,
-                    boot_method=boot_method,
-                    boot_n_resamples=boot_n_resamples
-                ),
-                diff_bland.iteritems()
+        if ci_bootstrapping is True:
+            lower_loa_ci = pd.concat(
+                map(
+                    lambda x: confidence_interval_calculation(
+                        to_ci=pd.DataFrame(x[1]),
+                        stage_device_name=x[0],
+                        function_to_ci=lambda y: nanmean(y) - 1.96 * nanstd(y),
+                        ci_level=ci_level,
+                        ci_bootstrapping=ci_bootstrapping,
+                        boot_method=boot_method,
+                        boot_n_resamples=boot_n_resamples
+                    ),
+                    diff_bland.iteritems()
+                )
             )
-        )
+        else:
+            lower_loa_ci = loa_ci_calculation(
+                loa=upper_loa,
+                bias=bias,
+                std=std,
+                length_of_array=diff_bland.size,
+                ci_level=ci_level
+            )
         lower_loa_ci.columns = [f'lower_loa_{i}' for i in lower_loa_ci.columns]
         # back transformation of log-transformed data.
         # applied only if back_transform is True

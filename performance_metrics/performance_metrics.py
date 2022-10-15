@@ -4,6 +4,7 @@ from typing import Callable, Text
 
 import numpy as np
 import pandas as pd
+import scipy.stats as st
 
 from sklearn.metrics import (
     accuracy_score,
@@ -95,6 +96,36 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         metrics_each_sleep_stage = pd.concat(metrics_each_sleep_stage, axis=0)
         metrics_each_sleep_stage = metrics_each_sleep_stage.apply(lambda x: round(x, self.digit))
         return metrics_each_sleep_stage
+
+    @property
+    def performance_metrics_each_sleep_stage_moments(self):
+        """
+        Calculate mean and 95%CI of the performance metrics per sleep stage.
+        Parameters
+        ----------
+        self
+
+        Returns
+        -------
+
+        """
+        performance_metrics = self.performance_metrics_each_sleep_stage
+        performance_metrics = performance_metrics.droplevel(level=0, axis=0)
+        performance_metrics = performance_metrics.iloc[:-1, :]
+
+        performance_metrics_mean = performance_metrics.mean(axis=0)
+        performance_metrics_mean = performance_metrics_mean.round(3)
+        performance_metrics_mean.name = 'mean'
+        performance_metrics_ci = performance_metrics.apply(
+            lambda x: st.t.interval(0.95, len(x) - 1, loc=np.mean(x), scale=st.sem(x)),
+            axis=0
+        )
+        performance_metrics_ci = performance_metrics_ci.round(3)
+        performance_metrics_ci = performance_metrics_ci.transpose()
+        performance_metrics_ci.columns = ["lower_ci", "upper_ci"]
+
+        performance_metrics_moments = pd.concat([performance_metrics_mean, performance_metrics_ci], axis=1)
+        return performance_metrics_moments
 
     @staticmethod
     def __metrics_calculation_each_device(
@@ -215,25 +246,26 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         y_reference = to_metrics.iloc[:, 1]
         y_device = to_metrics.iloc[:, 2]
 
+        labels = [i for i in list(set(y_reference)) if i != "Any"]
+
         if sleep_stage is True:
             stage_name = set(y_reference)
 
             stage_name = [i for i in stage_name if i != "Any"][0]
+            labels = labels + ["Any"]
         else:
             pass
 
         conf_matrix = confusion_matrix(
             y_true=y_reference,
             y_pred=y_device,
-            labels=list(set(y_reference))
+            labels=labels
         )
 
-        tp = np.diag(conf_matrix).flatten()  # true positive
-        fp = conf_matrix.sum(axis=0) - np.diag(conf_matrix)  # false positive
-        fn = conf_matrix.sum(axis=1) - np.diag(conf_matrix)  # false negative
-        tn = conf_matrix.sum() - (tp + fp + fn)  # true negative
 
         if np.shape(conf_matrix)[1] == 2 and sleep_stage is True:
+
+            tp, fn, fp, tn = conf_matrix.ravel()
 
             metrics_output = pd.DataFrame(
                 {
@@ -255,10 +287,10 @@ class PerformanceMetrics(PerformanceMetricsPlot):
                         y_true=y_reference,
                         y_pred=y_device
                     ),
-                    "NPV": pd.Series(
-                        tn / (tn + fn),
-                        name="NPV"
-                    ),
+                    # "NPV": pd.Series(
+                    #     tn / (tn + fn),
+                    #     name="NPV"
+                    # ),
                     "PPV": precision_score(
                         y_true=y_reference,
                         y_pred=y_device,
@@ -271,13 +303,18 @@ class PerformanceMetrics(PerformanceMetricsPlot):
                     ),
                     "specificity": pd.Series(
                         tn / (tn + fp),
-                        name="NPV"
+                        name="specificity"
                     )
                 },
                 index=[0]
             )
 
         else:
+            tp = np.diag(conf_matrix).flatten()  # true positive
+            fp = conf_matrix.sum(axis=0) - np.diag(conf_matrix)  # false positive
+            fn = conf_matrix.sum(axis=1) - np.diag(conf_matrix)  # false negative
+            tn = conf_matrix.sum() - (tp + fp + fn)  # true negative
+
             metrics_output = pd.DataFrame(
                 {
                     f"{id_column}": participant_id,

@@ -1,3 +1,4 @@
+from math import sqrt
 from typing import Callable, Text, Tuple
 
 import pandas as pd
@@ -135,6 +136,7 @@ def confidence_interval_calculation(
         ci.index = index
         ci.columns = ["lower_ci", "upper_ci"]
 
+    ci = ci * 100
     ci = round(ci, digit)
 
     if return_annot_df is False:
@@ -148,3 +150,63 @@ def confidence_interval_calculation(
         ci_output.index = [stage_device_name]
 
     return ci_output
+
+
+def loa_ci_calculation(
+        loa: float,
+        bias: float,
+        std: float,
+        length_of_array: int,
+        ci_level: float
+) -> pd.DataFrame:
+    """
+    Calculate confidence interval of limits of agreement.
+    Parameters
+    ----------
+    loa: float
+    bias: float
+    std: float
+    length_of_array: int
+    ci_level: float
+
+    Returns
+    -------
+        df_to_return: pd.DataFrame
+
+    """
+    loa_sem = std * sqrt((1 / length_of_array + pow(1.96, 2) / (2 * length_of_array)))
+    upper_ci = loa + (loa_sem * t.ppf((1 + ci_level) / 2., length_of_array - 1))
+    lower_ci = loa - (loa_sem * t.ppf((1 + ci_level) / 2., length_of_array - 1))
+    dict_to_df = dict(lower_ci=lower_ci, upper_ci=upper_ci)
+    df_to_return = pd.DataFrame.from_dict(dict_to_df)
+
+    return df_to_return
+
+
+def bias_ci_calculation(
+        bias: float,
+        std: float,
+        length_of_array: int,
+        ci_level: float
+) -> pd.DataFrame:
+    """
+    Calculate confidence interval of bias.
+    Parameters
+    ----------
+    bias: float
+    std: float
+    length_of_array: int
+    ci_level: float
+
+    Returns
+    -------
+        df_to_return: pd.DataFrame
+
+    """
+    bias_sem = std/sqrt(length_of_array)
+    upper_ci = bias + (bias_sem * t.ppf((1 + ci_level) / 2., length_of_array - 1))
+    lower_ci = bias - (bias_sem * t.ppf((1 + ci_level) / 2., length_of_array - 1))
+    dict_to_df = dict(lower_ci=lower_ci, upper_ci=upper_ci)
+    df_to_return = pd.DataFrame.from_dict(dict_to_df)
+
+    return df_to_return

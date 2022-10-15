@@ -168,17 +168,31 @@ class SleepTrackerMenu(
             f'{save_name}.csv'
         )
 
-        savepath_absolute_confusion_matrix = save_directory_generation(
+        savepath_standard_absolute_confusion_matrix = save_directory_generation(
             save_path,
-            'absolute_confusion_matrix',
+            'standard_absolute_confusion_matrix',
             ['plot', 'excel_export']
         )
-        self._savepath_absolute_confusion_matrix_plot = os.path.join(
-            savepath_absolute_confusion_matrix[1][0],
+        self._savepath_standard_absolute_confusion_matrix_plot = os.path.join(
+            savepath_standard_absolute_confusion_matrix[1][0],
             f'{save_name}'
         )
-        self._savepath_absolute_confusion_matrix_xlsx = os.path.join(
-            savepath_absolute_confusion_matrix[1][1],
+        self._savepath_standard_absolute_confusion_matrix_xlsx = os.path.join(
+            savepath_standard_absolute_confusion_matrix[1][1],
+            f'{save_name}'
+        )
+
+        savepath_standard_normalized_confusion_matrix = save_directory_generation(
+            save_path,
+            'standard_normalized_confusion_matrix',
+            ['plot', 'excel_export']
+        )
+        self._savepath_standard_normalized_confusion_matrix_plot = os.path.join(
+            savepath_standard_normalized_confusion_matrix[1][0],
+            f'{save_name}'
+        )
+        self._savepath_standard_normalized_confusion_matrix_xlsx = os.path.join(
+            savepath_standard_normalized_confusion_matrix[1][1],
             f'{save_name}'
         )
 

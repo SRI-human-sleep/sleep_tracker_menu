@@ -68,7 +68,15 @@ class PerformanceMetricsPlot:
                 plt.show(block=True)
         return None
 
-    def boxplot_swarmplot_performance_metrics_each_device(self, size=None):
+    def boxplot_swarmplot_performance_metrics_each_device(
+            self,
+            size=None,
+            figsize: Tuple[int, int] = None,
+            title_text: str = '',
+            title_fontsize: int = 10,
+            axis_label_fontsize: int =11,
+            axis_ticks_fontsize: int=13
+    ):
         """
         Plots the boxplot with the
         corresponding swarmplot superimposed.
@@ -88,11 +96,20 @@ class PerformanceMetricsPlot:
         -------
         None
         """
+
         if size is None:
-            size = 5 # seaborn default
+            size = 5  # seaborn default
         else:
             pass
+
+        if figsize is None:
+            figsize = [6.4, 4.8]
+        else:
+            pass
+
         df_to_plot = self.performance_metrics_each_sleep_stage
+
+
 
         device_level = set(df_to_plot.index.get_level_values("device"))
         metric_level = set(df_to_plot.columns.get_level_values("metric"))
@@ -112,7 +129,8 @@ class PerformanceMetricsPlot:
                 fig, ax_to_plot = plt.subplots(
                     ncols=1,
                     nrows=1,
-                    dpi=self.plot_dpi
+                    dpi=self.plot_dpi,
+                    figsize=figsize
                 )
                 boxplot(
                     ax=ax_to_plot,
@@ -125,10 +143,18 @@ class PerformanceMetricsPlot:
                     size=size
                 )
 
+                plt.xticks(fontsize=axis_ticks_fontsize)
+                ax_to_plot.set_xlabel("Stage", fontsize=axis_label_fontsize)
+
+
                 ax_to_plot.set_ylim(0, 1.2)
-                ax_to_plot.set_yticks(np.arange(0, 1.2, 0.2))
-                ax_to_plot.set_ylabel(j)
-                ax_to_plot.set_title(i)
+                plt.yticks(np.arange(0, 1.2, 0.2), fontsize=axis_ticks_fontsize)
+                ax_to_plot.set_ylabel(j, fontsize=axis_label_fontsize)
+
+                if title_text == '':
+                    ax_to_plot.set_title(i, fontsize=title_fontsize)
+                else:
+                    ax_to_plot.set_title(title_text, fontsize=title_fontsize)
 
                 plt.tight_layout()
 
@@ -140,8 +166,10 @@ class PerformanceMetricsPlot:
 
                 save_plot = join(
                     save_plot,
-                    f"{self._savepath_performance_metrics_boxplots[2]}.png"
+                    f"{self._savepath_performance_metrics_boxplots[2]}_{i}_.png"
                 )
+
+                plt.tight_layout()
 
                 plt.savefig(
                     save_plot,
