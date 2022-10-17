@@ -1,9 +1,10 @@
+import os
 from math import inf
-from itertools import chain
 from typing import Text, Tuple
+from itertools import chain, repeat
 
 import pandas as pd
-from numpy import nan, array, nanstd, arange
+from numpy import nan, array, nanstd
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -22,15 +23,19 @@ class BlandAltmanPlot:
             parameter_to_plot=None,
             device_to_plot=None,
             x_axis_mean=None,
-            ci_bootstrapping='ci',
-            n_bootstrapping=10000,
-            linewidth_lines=3,
-            joint_plot_ratio=6,
-            joint_plot_height=10,
-            confidence_level=0.95,
-            augmenting_factor_ylimits=0.3
+            ci_level: float = None,
+            title_fontsize: int = 10,
+            axis_label_fontsize: int = 11,
+            axis_ticks_fontsize: int = 13,
+            ci_bootstrapping: str = 'ci',
+            n_bootstrapping: int = 10000,
+            linewidth_lines: int = 3,
+            joint_plot_ratio: int = 6,
+            joint_plot_height: int = 10,
+            augmentation_factor_ylimits: float = 0.3,
+            augmentation_factor_xlimits: float = 0.1,  # not supported yet
+            plot_dpi: int = None
     ):
-
         device_to_scatter = self.sleep_parameters_difference
         reference_to_scatter = self.sleep_parameters.loc[:, self._reference_col]
         if log_transformed is True:
@@ -40,10 +45,12 @@ class BlandAltmanPlot:
 
         device_to_scatter = device_to_scatter.replace({-inf: nan})
 
-        y_limits = self._BlandAltmanPlot__y_limits_calculation(
+        x_limits, y_limits = self._BlandAltmanPlot__plot_limits_calculation(
             device_to_scatter,
+            reference_to_scatter,
             bland_parameters,
-            augmenting_factor_ylimits
+            augmentation_factor_ylimits,
+            augmentation_factor_xlimits
         )
         # used later to force y_limits around the 0 axis.
 
@@ -55,9 +62,18 @@ class BlandAltmanPlot:
         if parameter_to_plot is None:
             pass  # all parameters are plotted.
         else:  # specifies those parameters that the user would like to plot.
-
             device_to_scatter = device_to_scatter.xs(parameter_to_plot, level='parameter', axis=0)
             reference_to_scatter = reference_to_scatter.xs(parameter_to_plot, level='parameter', axis=0)
+
+        if plot_dpi is None:
+            plot_dpi = self.plot_dpi
+        else:
+            pass
+
+        if ci_level is None:
+            ci_level = self.ci_level
+        else:
+            pass
 
         # start plotting each sleep stage for each device.
         # the outer for loop-loop iterates over each
@@ -96,7 +112,7 @@ class BlandAltmanPlot:
                     self._BlandAltmanPlot__proportional_bias_heteroskedasticity_testing(
                     par_to_plot,
                     ref_to_plot,
-                    confidence_level
+                    ci_level
                 )
 
                 if proportional_bias is False:
@@ -111,11 +127,17 @@ class BlandAltmanPlot:
                     constant_hetersked, x1_hetersked, results_hetersked = heteroskedasticity
                     heteroskedasticity = True
 
+
                 # plotting bland-altman plot.
                 joint_plot = JointGrid(
                     dropna=True,
                     ratio=joint_plot_ratio,
                     height=joint_plot_height,
+                )
+
+                joint_plot.ax_joint.set_xlim(
+                    x_limits.loc[par_name, "min_xlim"],
+                    x_limits.loc[par_name, "max_xlim"]
                 )
 
                 scatterplot(
@@ -295,16 +317,19 @@ class BlandAltmanPlot:
                 )
                 joint_plot.ax_joint.set_ylabel(
                     f'Δ({ref_to_plot.name} - {par_to_plot.name}) ({unit_of_measurement})',
-                    fontsize='xx-large'
+                    fontsize=axis_label_fontsize
                 )
                 joint_plot.ax_joint.set_xlabel(
                     f'{ref_to_plot.name} ({unit_of_measurement})',
-                    fontsize='xx-large'
+                    fontsize=axis_label_fontsize
                 )
                 joint_plot.ax_joint.set_title(
                     f'{par_name}',
-                    fontsize='xx-large'
+                    fontsize=title_fontsize
                 )
+
+                plt.xticks(fontsize=axis_ticks_fontsize)
+                plt.yticks(fontsize=axis_ticks_fontsize)
 
                 joint_plot.ax_joint.set_ylim(
                     -y_limits[par_name],
@@ -318,15 +343,21 @@ class BlandAltmanPlot:
                 )
 
                 plt.tight_layout()
+                plt.savefig(
+                    os.path.join(self._savepath_bland_altman_plots, f"{dev_name}_{par_name}.png"),
+                    dpi=plot_dpi
+                )
                 plt.show()
 
         return to_append
 
     @staticmethod
-    def __y_limits_calculation(
+    def __plot_limits_calculation(
             device_to_scatter_in: pd.DataFrame,
+            reference_to_scatter_in: pd.DataFrame,
             bland_parameters_in:pd.DataFrame,
-            augmenting_factor_ylimits: float
+            augmentation_factor_ylimits: float,
+            augmentation_factor_xlimits: float
     ):
         """
         Calculates the value to be assigned as upper and lower y-limits
@@ -338,7 +369,7 @@ class BlandAltmanPlot:
                 device_to_scatter
             bland_parameters_in: pd.DataFrame
                 bland_parameters
-            augmenting_factor_ylimits:
+            augmentation_factor_ylimits:
                 used to enlarge the ylimits
 
 
@@ -352,42 +383,62 @@ class BlandAltmanPlot:
             procedure makes the y-axis forced around the 0.
         """
 
-        def y_limits_calculation_device_parameters(device_to_scatter_in):
-            par_name = device_to_scatter_in[0]
-            to_min_max = device_to_scatter_in[1]
+        def limits_calculation_parameters(
+                to_limits,
+                x_limit_calculation=False
+        ):
+            par_name = to_limits[0]
+            to_min_max = to_limits[1]
             min_val = to_min_max.min()
             max_val = to_min_max.max()
 
-            try:
-                min_val = min_val.min()
-                max_val = max_val.max()
+            if x_limit_calculation is True:
+                min_augmented_limit = min_val - min_val * augmentation_factor_xlimits
+                max_augmented_limit = max_val + max_val * augmentation_factor_xlimits
+                dict_to_df = {"min_xlim": min_augmented_limit, "max_xlim": max_augmented_limit}
+                limits_to_plot = pd.DataFrame(dict_to_df, index=[par_name])
+                limits_to_plot = limits_to_plot.round(0)
 
-            except AttributeError:  # 'float' object has no attribute 'max'? 'max'
-                # used to manage the case in which the max value is calculated don
-                # bland_parameters_in
-                pass
+            else:
+                try:
+                    min_val = min_val.min()
+                    max_val = max_val.max()
 
-            y_axis_lim = max(abs(min_val), abs(max_val))
+                except AttributeError:  # 'float' object has no attribute 'max'? 'max'
+                    # used to manage the case in which the max value is calculated don
+                    # bland_parameters_in
+                    pass
 
-            return pd.Series(y_axis_lim, index=[par_name])
+                limits_to_plot = max(abs(min_val), abs(max_val))
+                limits_to_plot = pd.Series(limits_to_plot, index=[par_name])
+
+            return limits_to_plot
+
+        x_limits = pd.concat(
+            map(
+                limits_calculation_parameters,
+                reference_to_scatter_in.groupby(level='parameter', axis=0),
+                repeat(True)
+            )
+        )
 
         y_limits_device = pd.concat(
             map(
-                y_limits_calculation_device_parameters,
+                limits_calculation_parameters,
                 device_to_scatter_in.groupby(level='parameter', axis=0)
             )
         )
         y_limits_parameters = pd.concat(
             map(
-                y_limits_calculation_device_parameters,
+                limits_calculation_parameters,
                 bland_parameters_in.items()
             )
         )
         y_limits = pd.concat([y_limits_device, y_limits_parameters], axis=1)
         y_limits = y_limits.max(axis=1).round(0)
-        y_limits = y_limits + y_limits * augmenting_factor_ylimits  # adding 10% to allow a better
-        # visualization of limits.
-        return y_limits
+        y_limits = y_limits + y_limits * augmentation_factor_ylimits
+
+        return x_limits, y_limits
 
     @staticmethod
     def __proportional_bias_heteroskedasticity_testing(
