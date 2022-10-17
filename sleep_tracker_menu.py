@@ -250,3 +250,9 @@ class SleepTrackerMenu(
             'hypnograms_plot',
             [save_name]
         )[1][0]
+
+        self._savepath_bland_altman_plots = save_directory_generation(
+            save_path,
+            'bland_altman_plots',
+            [save_name]
+        )[1][0]

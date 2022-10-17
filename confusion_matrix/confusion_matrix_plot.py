@@ -12,7 +12,7 @@ class ConfusionMatrixPlot:
             title_text: str = '',
             title_fontsize: int = 10,
             cmap_colors:str='Blues',
-            axis_label_fontsize: str=11,
+            axis_label_fontsize: int=11,
             axis_ticks_fontsize: int=13
     ):
         """
