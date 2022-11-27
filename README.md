@@ -1,4 +1,4 @@
-The pipeline can be fed with pandas dataframes formatted formatted in long format (each row corresponds to a sample). It must have at least three rows:
+The pipeline can be fed with pandas dataframes formatted in long format (each row corresponds to a sample). It must have at least three rows:
 one for subjects IDs, one containing the reference (for example, PSolysomnographic recordings) and the last containing sleep scores coming from the device
 under study (for example, PSG, or a wearable). Assign a clear header to each of these columns, given that headers will be used in plots. Some good headers might
 be "ID" for the identifier column, "Reference" for the gold-standard, and "Device" for the device under study.
