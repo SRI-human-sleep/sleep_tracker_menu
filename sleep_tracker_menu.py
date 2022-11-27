@@ -4,7 +4,6 @@ from typing import List, Text, TypedDict
 
 import pandas as pd
 
-from bland_altman.bland_altman import BlandAltman
 from hypnograms.hypnograms import HypnogramPlot
 from confusion_matrix.confusion_matrix import ConfusionMatrix
 from sleep_parameters.sleep_parameters import SleepParameters
@@ -16,7 +15,7 @@ from utils.save_directory_generation import save_directory_generation
 
 
 class SleepTrackerMenu(
-    SleepParameters, PerformanceMetrics, ConfusionMatrix, BlandAltman, HypnogramPlot, BlandAltmanPlot
+    SleepParameters, PerformanceMetrics, ConfusionMatrix, BlandAltmanPlot, HypnogramPlot
 ):
     def __init__(
             self,
@@ -37,39 +36,71 @@ class SleepTrackerMenu(
             boot_n_resamples: int = 10000
     ) -> None:
         """
+        Interface class used to evaluate the performance
+        of sleep-tracker devices.
+
+        It implements methods to conduct epoch-by-epoch (EBE)
+        and discrepancy analyzes, in accordance with Menghini et al.
+        (2021). DOI: 10.1093/sleep/zsaa170
+
+        This class supports the evaluation of performance of multiple
+        devices (for example, two, three or more smartbands) against
+        one reference device (for example, Polysomnography).
+        Measurements of both the reference and devices under evaluation
+        must be temporally aligned to the reference and between each others
+        before being passed to the class. This implies that the number of
+        samples for the reference and each device must be equal. If you are
+        using sleep trackers with different sampling frequencies, you can either
+        resample your dataset or instantiate SleepTrackerMenu separately for
+        each device.
+
+        This class does not automatically align time series. Time signals
+        are assumed to be already aligned by the user.
+
+        If you use this tool, please cite one of these
+        two publications:
+            1)
+            2)
 
         Args:
             file: pd.DataFrame
-                file containing a column, containing the IDs,
-                a column containing the reference, and columns
-                containing data collected by device(s) under
-                investigation.
+                Two-dimensional table containing data to be analyzed.
+                Each row corresponds to an observation.
+                It must include at least three columns:
+                1)  a column containing the IDs for each observation.
+                    If multiple observations are collected for the same subject,
+                    ID must be repeated for each observation.
+                2)  a column containing measurements collected by the
+                    reference signal. Only one reference technique
+                    is supported by the routine.
+                3)  a column containing measurements collected by the
+                    device being evaluated. If the performance of multiple
+                    devices is assessed, measurements of each device must
+                    be passed in different columns.
             drop_wrong_labels: bool
-                if True, the function checks for any wrong value
-                passed with file and values are dropped. If false,
+                if True, any wrong values passed are dropped. If false,
                 values are not dropped but the routine might run
-                into errors.
+                into errors. A wrong value is defined as a value
+                that is not represented in sleep_scoring
             id_col: Text
-                header of the id column.
+                header of the column containing IDs
             reference_col: Text
-                header of the reference column.
+                header of the column containing
+                measurements collected by the device
+                used as reference
             device_col: List
-                List containing the header(s) of the devices
-                under investigation.
+                List containing the header(s) of the device(s)
+                whose performance is evaluated.
             save_path: Text
-                directory in which save plots.
+                directory in which save plots. Multiple
+                folders are automatically generated in
+                save_path.
             sleep_scoring: TypedDict
                 dictionary specifying the label
                 assigned to Wake, and Sleep.
-                Pass the following dictionary if
-                sleep distinction is supported:
-                sleep_scoring={
-                    'Wake': 'W',
-                    'Sleep': ["N1", "N2", "N3", "R"]
-                    },
             sleep_stages: TypedDict| bool
                 It can be either a boolean (False),
-                if the device(s) under investigation
+                if the device(s) evaluated
                 do(es) not make distinction between
                 REM and NREM sleep.
                 Pass the following dictionary if
@@ -78,7 +109,6 @@ class SleepTrackerMenu(
                     'REM': "R",
                     'NREM': ["N1", "N2", "N3"]
                 }
-
             epoch_length: int
                 specifies the length of each epoch
                 in seconds.
@@ -92,22 +122,30 @@ class SleepTrackerMenu(
                 specifies if the confidence interval
                 will be calculated through bootstrapping
             boot_method: Text
-                type of
+                type of bootstrap method to calculate confidence
+                intervals.
             boot_n_resamples: int
-                number of resampling to apply during
-                confidence interval calculation through
-                evaluation.
+                number of resampling when calculating
+                confidence intervals via bootstrapping
         """
-        self.file, self.wrong_epochs = sanity_check(file, sleep_scoring, reference_col, device_col, drop_wrong_labels)
+        self.file, self.wrong_epochs = sanity_check(
+            file,
+            sleep_scoring,
+            reference_col,
+            device_col,
+            drop_wrong_labels
+        )
         self.id = id_col
 
         self.reference = self.file.loc[:, [id_col, reference_col]]
         self._reference_col = reference_col
 
-        self.device = list(map(lambda x: self.file.loc[:, [id_col, x]],
-                               device_col
-                               )
-                           )
+        self.device = list(
+            map(
+                lambda x: self.file.loc[:, [id_col, x]],
+                device_col
+            )
+        )
         self._device_col = device_col
 
         self.sleep_scoring = sleep_scoring

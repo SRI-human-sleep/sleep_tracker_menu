@@ -1,69 +1,113 @@
 import os
 from math import inf
-from typing import Text, Tuple
-from itertools import chain, repeat
-
-import pandas as pd
-from numpy import nan, array, nanstd
+from typing import Text
 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from numpy import nan
 from seaborn import JointGrid, scatterplot, kdeplot
 
-from statsmodels.api import add_constant
-from statsmodels.regression.linear_model import OLS
-from statsmodels.stats.diagnostic import het_breuschpagan
+from .bland_altman_parameters import BlandAltmanParameters
 
 
-class BlandAltmanPlot:
+class BlandAltmanPlot(BlandAltmanParameters):
 
     def bland_altman_plot(
             self,
-            log_transformed=False,
-            parameter_to_plot=None,
-            device_to_plot=None,
-            x_axis_mean=None,
+            log_transform: bool = False,
+            parameter_to_plot: list[str] = None,
+            device_to_plot: list[str] = None,
             ci_level: float = None,
             title_fontsize: int = 10,
             axis_label_fontsize: int = 11,
             axis_ticks_fontsize: int = 13,
-            ci_bootstrapping: str = 'ci',
-            n_bootstrapping: int = 10000,
-            linewidth_lines: int = 3,
+            ci_bootstrapping: str = None,
+            boot_n_resamples: int = None,
             joint_plot_ratio: int = 6,
             joint_plot_height: int = 10,
             augmentation_factor_ylimits: float = 0.3,
             augmentation_factor_xlimits: float = 0.1,  # not supported yet
             plot_dpi: int = None
     ):
-        device_to_scatter = self.sleep_parameters_difference
-        reference_to_scatter = self.sleep_parameters.loc[:, self._reference_col]
-        if log_transformed is True:
-            bland_parameters = self.bland_bias_loa_log
-        else:
-            bland_parameters = self.bland_bias_loa
+        """
+        Produce Bland Altman plot, modeling
+        the bias and limits of agreement
+        according to Bland and Altman 1999
+        Args:
+            log_transform: bool
+                if to produce plots
+                on log-transformed data
+                The default is False
+            parameter_to_plot: list[str]
+                if a list of parameters is passed,
+                only specified parameters will be plotted.
+                if parameter_to_plot is not specified (default),
+                all parameters are plotted
+                The default is None
+            device_to_plot: list[str]
+                if a list of devices is passed,
+                only specified devices will be plotted.
+                if device_to_plot is not specified (default),
+                all devices are plotted
+                The default is None
+            ci_level: float
+                confidence level for confidence interval
+                estimation. if not specified, ci_level specified
+                when constructing SleepTrackerMenu is used.
+                The default is None
+            title_fontsize: int
+                title fontsize
+                The default is
+            axis_label_fontsize: int
+                axis labels fontsize
+                The default is 11
+            axis_ticks_fontsize: int
+                axis labels fontsize
+                The default is 13
+            ci_bootstrapping: str
+                if to calculate confidence
+                intervals via bootstrapping
+                If not specified, confidence
+                intervals will be calculated
+                according to what specified
+                when constructing SleepTrackerMenu
+                The default is None
+            boot_n_resamples: int
+                number of resamples when
+                confidence intervals are calculated
+                via bootstrapping.
+                If not specified, the number of
+                boostrapping used to produce
+                Bland Altman plots will be the
+                one specified when constructing
+                SleepTrackerMenu
+                The default is None
+            joint_plot_ratio: int
+                Ratio of joint axes height
+                to marginal axes height
+                The default is 6
+            joint_plot_height: int
+                Size of the figure.
+                The default is 10
+            augmentation_factor_ylimits: float
+                used to widen y limits
+                the formula applied is:
+                max value along yaxis * (1+augmentation_factor_limit)
+                The default is 0.3
+            augmentation_factor_xlimits: float
+                Not supported yet
+                The default is 0.1
+            plot_dpi: int
+                dots per inch when saving
+                Bland-Altman plots.
+                if not specified, what
+                specified when constructing
+                SleepTrackerMenu is used.
+                The default is None
 
-        device_to_scatter = device_to_scatter.replace({-inf: nan})
+        Returns:
 
-        x_limits, y_limits = self._BlandAltmanPlot__plot_limits_calculation(
-            device_to_scatter,
-            reference_to_scatter,
-            bland_parameters,
-            augmentation_factor_ylimits,
-            augmentation_factor_xlimits
-        )
-        # used later to force y_limits around the 0 axis.
-
-        if device_to_plot is None:
-            pass  # all devices are plotted.
-        else:  # specifies those devices that the user would like to plot.
-            reference_to_scatter = reference_to_scatter.loc[:, device_to_plot]
-
-        if parameter_to_plot is None:
-            pass  # all parameters are plotted.
-        else:  # specifies those parameters that the user would like to plot.
-            device_to_scatter = device_to_scatter.xs(parameter_to_plot, level='parameter', axis=0)
-            reference_to_scatter = reference_to_scatter.xs(parameter_to_plot, level='parameter', axis=0)
+        """
 
         if plot_dpi is None:
             plot_dpi = self.plot_dpi
@@ -75,58 +119,70 @@ class BlandAltmanPlot:
         else:
             pass
 
-        # start plotting each sleep stage for each device.
-        # the outer for loop-loop iterates over each
-        # column of device_to_scatter, which contains
-        # data relative to a single device.
-        # the inner for-loop then plots for each
-        # stage the relative bland-altman plot.
-        # y-metrics of bland-altman plots will be
-        # forced to be the same for every stage
-        # and for every participant.
+        if boot_n_resamples is None:
+            boot_n_resamples = self.boot_n_resamples
+        else:
+            pass
 
-        sns.set_style("darkgrid")
+        if hasattr(self, "sleep_parameters_difference") is False:
+            self.calculate_sleep_parameters
+        else:
+            pass
 
-        to_append = []
-        for i in device_to_scatter.items():
-            dev_name = i[0]
-            dev_to_plot = i[1]  # gets the series resulting from iteritems
+        if log_transform is True:
+            reference_to_scatter = self.sleep_parameters_log.loc[:, self._reference_col]
+            device_to_scatter = self.sleep_parameters_difference_log
+        else:
+            reference_to_scatter = self.sleep_parameters.loc[:, self._reference_col]
+            device_to_scatter = self.sleep_parameters_difference
 
-            for j in dev_to_plot.groupby(level=1):  # used to iterate over parameters
-                par_name = j[0]
+        device_to_scatter = device_to_scatter.replace({-inf: nan})
 
-                unit_of_measurement = self._BlandAltmanPlot__unit_of_measurment_to_labels(par_name)
-                # parameter processed is automatically detected. it's unit
-                # measurement is here assigned to be depicted in x and y labels.
+        if device_to_plot is None:
+            pass  # all devices are plotted.
+        else:  # specifies those devices that the user would like to plot.
+            reference_to_scatter = reference_to_scatter.loc[:, device_to_plot]
 
-                par_to_plot = j[1].droplevel(level=1, axis=0)
-                # parameter to plot.
-                ref_to_plot = reference_to_scatter.xs(par_name, level='parameter')
+        if parameter_to_plot is None:
+            pass  # all parameters are plotted.
+        else:  # specifies those parameters that the user would like to plot.
+            device_to_scatter = device_to_scatter.xs(
+                parameter_to_plot,
+                level='parameter',
+                axis=0
+            )
+            reference_to_scatter = reference_to_scatter.xs(
+                parameter_to_plot,
+                level='parameter',
+                axis=0
+            )
 
-                if x_axis_mean is True:
-                    ref_to_plot = pd.concat([par_to_plot, ref_to_plot], axis=1).mean(axis=1)
-                else:
-                    pass
+        par_plot = self.calculate_parameters(
+            reference_to_scatter,
+            device_to_scatter,
+            ci_level,
+            augmentation_factor_ylimits,
+            augmentation_factor_xlimits
+        )
 
-                proportional_bias, heteroskedasticity = \
-                    self._BlandAltmanPlot__proportional_bias_heteroskedasticity_testing(
-                    par_to_plot,
-                    ref_to_plot,
-                    ci_level
-                )
+        sns.set_theme(
+            context='notebook',
+            style='darkgrid',
+            palette='deep',
+            font='sans-serif',
+            font_scale=2,
+            color_codes=True,
+            rc=None
+        )
 
-                if proportional_bias is False:
-                    pass
-                else:
-                    constant_propbias, x1_propbias, std_resid_propbias = proportional_bias
-                    proportional_bias = True
+        for i in par_plot:  # iterate over parameters
+            parameter: str = i[0]
+            unit_of_measurement = self._BlandAltmanPlot__unit_of_measurment_to_labels(parameter)
 
-                if heteroskedasticity is False:
-                    pass
-                else:
-                    constant_hetersked, x1_hetersked, results_hetersked = heteroskedasticity
-                    heteroskedasticity = True
+            for device in i[1]:  # iterate over devices
 
+                print(f"{parameter}, {device.get('device_name')}: heteroskedasticity {device.get('heteroskedasticity')}"
+                      f" proportional bias {device.get('proportional_bias')}")
 
                 # plotting bland-altman plot.
                 joint_plot = JointGrid(
@@ -136,20 +192,20 @@ class BlandAltmanPlot:
                 )
 
                 joint_plot.ax_joint.set_xlim(
-                    x_limits.loc[par_name, "min_xlim"],
-                    x_limits.loc[par_name, "max_xlim"]
+                    device.get("x_lim_left"),
+                    device.get("x_lim_right")
                 )
 
                 scatterplot(
-                    x=ref_to_plot,
-                    y=par_to_plot,
+                    x=device.get("reference_to_plot"),
+                    y=device.get("params_to_bias"),
                     color='Blue',
                     edgecolor='white',
                     ax=joint_plot.ax_joint
                 )
 
                 kdeplot(
-                    y=par_to_plot,
+                    y=device.get("params_to_bias"),
                     color='Blue',
                     ax=joint_plot.ax_marg_y
                 )  # kernel density estimation
@@ -160,180 +216,78 @@ class BlandAltmanPlot:
                 # no marginal plot depicted along
                 # the x-axis
 
-                # bias and its ci intervals.
-                bias = [
-                    bland_parameters.loc[(dev_name, 'bias'), par_name],
-                    bland_parameters.loc[(dev_name, 'bias_ci_upper_ci'), par_name],
-                    bland_parameters.loc[(dev_name, 'bias_ci_lower_ci'), par_name]
-                ]
+                sns.regplot(
+                    x=device.get("reference_to_plot"),
+                    y=device.get("params_to_bias"),  # plotting bias
+                    x_ci='ci',
+                    n_boot=boot_n_resamples,
+                    scatter=False,
+                    color='red',
+                    ax=joint_plot.ax_joint
+                )  # plotting the upper limit of agreement
 
-                if proportional_bias is False:  # standard bland-altman plot.
-                    # bool type is returned only if there is no proportional bias
-                    # in difference
+                sns.regplot(
+                    x=device.get("reference_to_plot"),
+                    y=device.get("params_upper_loa"),  # plotting upper loa
+                    x_ci=ci_bootstrapping,
+                    n_boot=boot_n_resamples,
+                    scatter=False,
+                    color='gray',
+                    ax=joint_plot.ax_joint
+                )
 
-                    count = 0
-                    for k in bias:
-                        if count == 0:
-                            ls_plot = '-'  # solid line used to plot bias
-                        else:
-                            ls_plot = '--'  # dashed line used to plot confidence intervals
-
-                        joint_plot.ax_joint.axhline(
-                            k,
-                            color='red',
-                            ls=ls_plot,
-                            linewidth=linewidth_lines
-                        )  # plotting the upper limit of agreement
-                        count += 1
-                    del ls_plot
-
-                else:
-                    sns.regplot(
-                        x=ref_to_plot,
-                        y=par_to_plot,
-                        x_ci='ci',
-                        n_boot=n_bootstrapping,
-                        scatter=False,
-                        color='red',
-                        ax=joint_plot.ax_joint
-                    )  # plotting the upper limit of agreement
-
-                # It follows plotting of loas and their confidence intervals.
-                if log_transformed is True:
-                    x_loa = ref_to_plot
-                    if proportional_bias is True:
-                        bias_to_bland = constant_propbias
-                    else:
-                        bias_to_bland = None
-
-                    loa_ci_to_plot = [
-                        self._BlandAltmanPlot__loa_ci_extraction(
-                            k,
-                            dev_name,
-                            par_name,
-                            bland_parameters,
-                            x_loa,
-                            bias_to_bland
-                        )
-                        for k in ['lower', 'upper']
-                    ]
-                    loa_ci_to_plot = list(chain.from_iterable(loa_ci_to_plot))
-                    # getting the lower limit of agreement,
-                    # along with its lower and upper confidence
-                    # interval
-
-                    count = 0
-                    for k in loa_ci_to_plot:
-                        sns.regplot(
-                            x=ref_to_plot,
-                            y=k,
-                            x_ci=ci_bootstrapping,
-                            n_boot=n_bootstrapping,
-                            scatter=False,
-                            color='gray',
-                            ax=joint_plot.ax_joint
-                        )
-                        count += 1
-                    del k, loa_ci_to_plot
-
-                else:  # data is not log-transformed. Loas to be plotted
-                    # are modified according to the presence of any bias and
-                    # heteroskedasticity of in the sample.
-
-                    if proportional_bias is False and heteroskedasticity is False:
-                        x_loa = None
-                        # it generates an array, spanning from the left to the
-                        # right limits of joint_plot.ax_joint. for further details
-                        # on this if-statement please check the docstring of loa_ci_extraction.
-
-                        loa_ci_to_plot = [
-                            self._BlandAltmanPlot__loa_ci_extraction(k, dev_name, par_name, bland_parameters, x_loa)
-                            for k in ['lower', 'upper']
-                        ]
-                        loa_ci_to_plot = list(chain.from_iterable(loa_ci_to_plot))
-                        # getting the lower limit of agreement,
-                        # along with its lower and upper confidence
-                        # interval
-
-                        count = 0
-                        for k in loa_ci_to_plot:
-                            if count == 0 or count == 3:
-                                ls_plot = '-'
-                            else:
-                                ls_plot = '--'
-
-                            joint_plot.ax_joint.axhline(
-                                k,
-                                color='gray',
-                                ls=ls_plot,
-                                linewidth=linewidth_lines
-                            )  # plotting the lower limit of agreement
-                            count += 1
-
-                        del ls_plot, count, loa_ci_to_plot
-
-                    else:
-                        if proportional_bias is True and heteroskedasticity is False:
-                            y_loa_to_plot = [
-                                par_to_plot + k * nanstd(par_to_plot)
-                                for k in [1.96, -1.96]
-                            ]
-
-                        elif proportional_bias is False and heteroskedasticity is True:
-                            y_loa_to_plot = [
-                                bias + (k * results_hetersked)
-                                for k in [2.46, -2.46]
-                            ]
-
-                        elif proportional_bias is True and heteroskedasticity is True:
-                            y_loa_to_plot = [
-                                (par_to_plot + k * nanstd(par_to_plot)) + (k * results_hetersked)
-                                for k in [2.46, -2.46]
-                            ]
-
-                        for k in y_loa_to_plot:
-                            sns.regplot(
-                                x=ref_to_plot,
-                                y=k,
-                                x_ci=ci_bootstrapping,
-                                n_boot=n_bootstrapping,
-                                scatter=False,
-                                color='gray',
-                                ax=joint_plot.ax_joint
-                            )
-                        del k, y_loa_to_plot
+                sns.regplot(
+                    x=device.get("reference_to_plot"),
+                    y=device.get("params_lower_loa"),  # plotting lower loa
+                    x_ci=ci_bootstrapping,
+                    n_boot=boot_n_resamples,
+                    scatter=False,
+                    color='gray',
+                    ax=joint_plot.ax_joint
+                )
 
                 # setting every other parameter
                 # of joint_plot
 
                 joint_plot.ax_joint.set_xticks(
                     joint_plot.ax_joint.get_xticks().round(0),
-                    fontsize='xx-large'
+                    fontsize=axis_ticks_fontsize
                 )
+                joint_plot.ax_joint.set_yticks(
+                    joint_plot.ax_joint.get_yticks().round(0),
+                    fontsize=axis_ticks_fontsize
+                )
+
                 joint_plot.ax_joint.grid(
                     visible=True,
                     which='major',
                     axis='both'
                 )
                 joint_plot.ax_joint.set_ylabel(
-                    f'Δ({ref_to_plot.name} - {par_to_plot.name}) ({unit_of_measurement})',
+                    f"Δ({device.get('device_name')} - {self._reference_col}) "
+                    f"({unit_of_measurement})",
                     fontsize=axis_label_fontsize
                 )
                 joint_plot.ax_joint.set_xlabel(
-                    f'{ref_to_plot.name} ({unit_of_measurement})',
+                    f'{self._reference_col} ({unit_of_measurement})',
                     fontsize=axis_label_fontsize
                 )
+
+                # if par_name == "W":
+                #     par_name_plot = "Wake"
+                # elif par_name == "R":
+                #     par_name_plot = "REM"
+                # else:
+                #     par_name_plot = par_name
+
                 joint_plot.ax_joint.set_title(
-                    f'{par_name}',
+                    f'{parameter}',
                     fontsize=title_fontsize
                 )
 
-                plt.xticks(fontsize=axis_ticks_fontsize)
-                plt.yticks(fontsize=axis_ticks_fontsize)
-
                 joint_plot.ax_joint.set_ylim(
-                    -y_limits[par_name],
-                    y_limits[par_name]
+                    -device.get("y_lim"),
+                    device.get("y_lim")
                 )  # ylim forced around y=0
 
                 joint_plot.ax_joint.autoscale(
@@ -344,254 +298,16 @@ class BlandAltmanPlot:
 
                 plt.tight_layout()
                 plt.savefig(
-                    os.path.join(self._savepath_bland_altman_plots, f"{dev_name}_{par_name}.png"),
+                    os.path.join(
+                        self._savepath_bland_altman_plots,
+                        f"{device.get('device_name')}_{parameter}.png"
+                    ),
                     dpi=plot_dpi
                 )
                 plt.show()
 
-        return to_append
+        return None
 
-    @staticmethod
-    def __plot_limits_calculation(
-            device_to_scatter_in: pd.DataFrame,
-            reference_to_scatter_in: pd.DataFrame,
-            bland_parameters_in:pd.DataFrame,
-            augmentation_factor_ylimits: float,
-            augmentation_factor_xlimits: float
-    ):
-        """
-        Calculates the value to be assigned as upper and lower y-limits
-        in Bland-Altman plots.
-
-        Called in BlandAltmanPlot.bland_altman_plot
-        Args:
-            device_to_scatter_in: pd.DataFrame
-                device_to_scatter
-            bland_parameters_in: pd.DataFrame
-                bland_parameters
-            augmentation_factor_ylimits:
-                used to enlarge the ylimits
-
-
-        Returns:
-            y_limits: int
-            y_limits to be applied. Note that
-            is returned only one absolute-value
-            integer. When setting y-axis' limits,
-            the positive and negative values of
-            this absolute value will be set. This
-            procedure makes the y-axis forced around the 0.
-        """
-
-        def limits_calculation_parameters(
-                to_limits,
-                x_limit_calculation=False
-        ):
-            par_name = to_limits[0]
-            to_min_max = to_limits[1]
-            min_val = to_min_max.min()
-            max_val = to_min_max.max()
-
-            if x_limit_calculation is True:
-                min_augmented_limit = min_val - min_val * augmentation_factor_xlimits
-                max_augmented_limit = max_val + max_val * augmentation_factor_xlimits
-                dict_to_df = {"min_xlim": min_augmented_limit, "max_xlim": max_augmented_limit}
-                limits_to_plot = pd.DataFrame(dict_to_df, index=[par_name])
-                limits_to_plot = limits_to_plot.round(0)
-
-            else:
-                try:
-                    min_val = min_val.min()
-                    max_val = max_val.max()
-
-                except AttributeError:  # 'float' object has no attribute 'max'? 'max'
-                    # used to manage the case in which the max value is calculated don
-                    # bland_parameters_in
-                    pass
-
-                limits_to_plot = max(abs(min_val), abs(max_val))
-                limits_to_plot = pd.Series(limits_to_plot, index=[par_name])
-
-            return limits_to_plot
-
-        x_limits = pd.concat(
-            map(
-                limits_calculation_parameters,
-                reference_to_scatter_in.groupby(level='parameter', axis=0),
-                repeat(True)
-            )
-        )
-
-        y_limits_device = pd.concat(
-            map(
-                limits_calculation_parameters,
-                device_to_scatter_in.groupby(level='parameter', axis=0)
-            )
-        )
-        y_limits_parameters = pd.concat(
-            map(
-                limits_calculation_parameters,
-                bland_parameters_in.items()
-            )
-        )
-        y_limits = pd.concat([y_limits_device, y_limits_parameters], axis=1)
-        y_limits = y_limits.max(axis=1).round(0)
-        y_limits = y_limits + y_limits * augmentation_factor_ylimits
-
-        return x_limits, y_limits
-
-    @staticmethod
-    def __proportional_bias_heteroskedasticity_testing(
-            par_to_plot_in: pd.Series,
-            ref_to_plot_in: pd.Series,
-            conf_level: float
-    ):
-        """
-        Tests for proportionality in bias nad heteroskedasticity.
-        Args:
-            par_to_plot_in: pd.Series
-                par_to_plot
-            ref_to_plot_in: pd.Series
-                ref_to_plot
-            conf_level: float
-                conf_level
-
-        Returns: Tuple[bool, bool]
-            proportional_bias: bool or List
-                if proportional_bias is a boolean, it means that
-                there is no proportional_bias in the sample under
-                study. In this case, proportional_bias equals False.
-                If a list is returned, there is proportional bias in the
-                difference. The list returned contains the necessary to
-                model the bias and loas according to Bland-Altman (1999).
-                In particular, the first element of the list is the b0 (intercept),
-                the second element is the slope while the third
-                is the standard deviation of the residuals.
-            heteroskedasticity: bool or List
-                if heteroskedasticity is a boolean,
-                there is no heteroskedasticity in the sample under
-                study. In this case heteroskedasticity equals False.
-                If a list is returned, there is heteroskedasticity in the
-                difference. The list returned contains the necessary to
-                model the bias and loas according to Bland-Altman (1999).
-                In particular, the first element of the list is the c0 (intercept),
-                the second eleemnt is the slope. The third element is the prediciton
-                of the linear regression model fitted on absolute values of residuals.
-        """
-        par_to_plot_in = par_to_plot_in.dropna()
-        ref_to_plot_in = ref_to_plot_in.dropna()
-
-        regmod = OLS(par_to_plot_in, add_constant(ref_to_plot_in))
-        # instance of OSL, linear the sum of squared
-        # vertical distances is minimized through
-        # ordinary least square method.
-
-        results = regmod.fit()
-        resid = results.resid
-        exog = results.model.exog
-        params = results.params
-
-        alpha_to_ci = 1 - conf_level
-
-        lower_confint = results.conf_int(alpha=alpha_to_ci)[0][0]
-        higher_confint = results.conf_int(alpha=alpha_to_ci)[1][0]
-        if lower_confint > 0 or higher_confint < 0:  # proportional_bias was
-            # found. the function will return parameters to plot
-            # bias and loas taking into account the proportional_bias.
-
-            summary = results.summary()
-            summary = summary.tables[1].data
-
-            constant = float(summary[1][1])  # b0
-            x1 = float(summary[2][1])  # b1
-            std_resid = nanstd(resid)  # standard deviation of residuals.
-
-            proportional_bias = [constant, x1, std_resid]
-        else:
-            proportional_bias = False
-
-        heteroskedasticity = het_breuschpagan(resid, exog)
-        if heteroskedasticity[3] < 0.05:  # gets the p-value
-
-            regmod_hetersked = OLS(abs(resid), add_constant(ref_to_plot_in))
-            # instance of OSL, linear the sum of squared
-            # vertical distances is minimized through
-            # ordinary least square method.
-
-            results_hetersked = regmod_hetersked.fit()
-
-            summary_hetersked = results_hetersked.summary()
-            summary_hetersked = summary_hetersked.tables[1].data
-
-            constant_hetersked = float(summary_hetersked[1][1])  # c0
-            x1_hetersked = float(summary_hetersked[2][1])  # c1
-
-            prediction_hetersked = results_hetersked.predict()
-
-            heteroskedasticity = [constant_hetersked, x1_hetersked, prediction_hetersked]
-
-        else:
-            heteroskedasticity = False
-
-        return proportional_bias, heteroskedasticity
-
-    @staticmethod
-    def __loa_ci_extraction(
-            loa_to_extract: Text,
-            dev_name_in: Text,
-            par_name_in: Text,
-            bland_parameters_in: pd.DataFrame,
-            x_loa_in: array = None,
-            constant_propbias: float = None
-    ) -> Tuple[array, array, array]:
-        """
-        Extracts limits of agreement along with
-        their confidence interval from
-        BlandAltmanPlot.bland_altman_plot
-        bland_parameters local variable.
-
-        Fuction implemented only to improve
-        the readability of BlandAltmanPlot.bland_altman_plot
-        method.
-
-        Args:
-            loa_to_extract: Text
-            Either  'upper' or 'lower'.
-            dev_name_in: Text
-                dev_name in BlandAltmanPlot.bland_altman_plot.
-            par_name_in: Text
-                par_name in BlandAltmanPlot.bland_altman_plot.
-            bland_parameters_in:
-                bland_parameters in BlandAltmanPlot.bland_altman_plot.
-            x_loa_in:
-                x_loa in BlandAltmanPlot.bland_altman_plot
-                (if statement that checks if log transformation
-                should be applied to data).
-
-        Returns:
-            y_loa: np.array
-                limits of agreement
-            lower_ci: np.array
-                lower confidence interval
-            upper_ci: np.array
-                upper confidence interval
-        """
-        y_loa = bland_parameters_in.loc[(dev_name_in, f'{loa_to_extract}_loa'), par_name_in]
-        lower_ci = bland_parameters_in.loc[(dev_name_in, f'{loa_to_extract}_loa_lower_ci'), par_name_in]
-        upper_ci = bland_parameters_in.loc[(dev_name_in, f'{loa_to_extract}_loa_upper_ci'), par_name_in]
-
-        if x_loa_in is None:
-            pass
-        else:
-            if constant_propbias is None:
-                bias_in = bland_parameters_in.loc[(dev_name_in, 'bias'), par_name_in]
-            else:
-                bias_in = constant_propbias
-
-            y_loa = y_loa * x_loa_in + bias_in  # adding up the bias as intercept
-            lower_ci = lower_ci * x_loa_in + bias_in  # adding up the bias as intercept
-            upper_ci = upper_ci * x_loa_in + bias_in  # adding up the bias as intercept
-        return y_loa, lower_ci, upper_ci
 
     @staticmethod
     def __unit_of_measurment_to_labels(par_name: Text):
@@ -616,6 +332,8 @@ class BlandAltmanPlot:
         elif par_name == 'SE':
             unit_of_measurement = '%'
         else:  # called for sleep stages.
-            unit_of_measurement = 'count'
+            unit_of_measurement = 'min'
 
         return unit_of_measurement
+
+

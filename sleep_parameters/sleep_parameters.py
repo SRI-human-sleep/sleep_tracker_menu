@@ -1,6 +1,6 @@
 from typing import Any
-from functools import reduce
 from itertools import repeat, chain
+from functools import reduce, cached_property
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,8 @@ class SleepParameters(DiscrepancyPlot):
         self.sleep_parameters_log = None
         self.sleep_parameters_difference_log = None
 
-    def sleep_parameters_calculation(self):
+    @cached_property
+    def calculate_sleep_parameters(self):
         """
         Calculate Total Sleep Time (TST), Sleep Efficiency (SE),
         Wake After Sleep Onset (WASO) and Sleep Onset Latency (SOL)
@@ -189,7 +190,7 @@ class SleepParameters(DiscrepancyPlot):
                     columns=[id_col, "parameter", y]
                 ),
                 dev_sleep_stages,
-                self._reference_col
+                self._device_col
             )
         )
         dev_sleep_stages: pd.DataFrame = reduce(
@@ -212,7 +213,6 @@ class SleepParameters(DiscrepancyPlot):
             axis=0
         )
 
-
         self.sleep_parameters_difference: pd.DataFrame =\
             self._SleepParameters__parameter_difference_calculation(
                 self.sleep_parameters
@@ -220,10 +220,14 @@ class SleepParameters(DiscrepancyPlot):
 
         # log transformed metrics
         self.sleep_parameters_log = self.sleep_parameters.apply(np.log10)
+
         self.sleep_parameters_difference_log =\
             self._SleepParameters__parameter_difference_calculation(
                 self.sleep_parameters_log
             )
+
+        test = self.sleep_parameters_difference
+        test_log = self.sleep_parameters_difference_log
 
         return self.sleep_parameters, self.sleep_parameters_difference
 
