@@ -162,7 +162,7 @@ class BlandAltmanParameters:
 
         std = par_to_plot_in.std()
         bias = par_to_plot_in.mean()
-        if proportional_bias is True and heteroskedasticity is False:
+        if proportional_bias is False and heteroskedasticity is False:
             params_upper_loa: pd.Series = par_to_plot_in + 1.96 * std
             params_lower_loa: pd.Series = par_to_plot_in - 1.96 * std
 

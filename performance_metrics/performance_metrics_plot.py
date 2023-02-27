@@ -10,7 +10,13 @@ from utils.confidence_interval import confidence_interval_calculation
 
 
 class PerformanceMetricsPlot:
-    def performance_metrics_heatmap_plot(self):
+    def performance_metrics_heatmap_plot(
+            self,
+            figsize: Tuple[int, int] = None,
+            title_fontsize: int = 10,
+            axis_label_fontsize: int = 11,
+            axis_ticks_fontsize: int = 13
+    ):
         """
         Plot the heatmap plot of the performance
         metrics calculated per device.
@@ -30,6 +36,11 @@ class PerformanceMetricsPlot:
         -------
         None
         """
+        if figsize is None:
+            figsize = [6.4, 4.8]
+        else:
+            pass
+
         df_to_plot = self.performance_metrics_each_sleep_stage
 
         device_level = set(df_to_plot.index.get_level_values('device'))
@@ -58,13 +69,19 @@ class PerformanceMetricsPlot:
                     ax=ax_to_plot
                 )
 
-                ax_to_plot.set_title(f"{j}, {i}", fontsize=12)
+                ax_to_plot.set_title(f"{j}, {i}", fontsize=title_fontsize)
 
+                plt.xlabel("Participant", fontsize=axis_label_fontsize)
+                plt.ylabel("Metric", fontsize=axis_label_fontsize)
+                plt.xticks(fontsize=axis_ticks_fontsize)
+                plt.yticks(fontsize=axis_ticks_fontsize)
+
+                plt.tight_layout()
                 plt.savefig(
-                    f"self._savepath_metrics_plot_{i}_{j}.png",
+                    f"{self._savepath_metrics_plot}_{i}_{j}.png",
                     dpi=self.plot_dpi
                 )
-                plt.tight_layout()
+
                 plt.show(block=True)
         return None
 
