@@ -5,50 +5,40 @@ Created on Fri Jul 22 12:02:41 2022
 @author: E34476
 """
 
+from typing import List, Text
+
 import matplotlib.pyplot as plt
 from seaborn import heatmap
 from pandas import DataFrame
 
-from .sleep_parameters import SleepParameters
 
-
-class DiscrepancyPlot(SleepParameters):
+class DiscrepancyPlot:
     def discrepancy_plot(
             self,
             plot_dpi: int = None,
-            figsize: list[int] = None
+            figsize: List[int] = None
     ):
         """
-        Generates a discrepancy plot for each device, comparing sleep parameters.
+        Plot discrepancy plot.
 
-        This method, used by the `sleep_parameters.SleepParameters` class, creates
-        a discrepancy plot for each device, saving each plot to a predefined directory.
+        It is superclass to sleep_parameters.SleepParameters.
+        discrepancy_plot method plots.
 
         Parameters
         ----------
-        plot_dpi : int, optional
-            Resolution of the plot in dots per inch. If not specified, defaults to
-            `self.plot_dpi`.
-        figsize : list of int, optional
-            Dimensions of the plot in inches as [width, height]. If not provided,
-            defaults to [6.4, 4.8], the standard size in matplotlib.
+        plot_dpi: int
+            self.plot_dpi
+            The default is None
+        figsize: List[int, int]
+            specifies the dimension of discrepancy plot.
+            If no argument is passed, figsize is set
+            to be the default assigned in matplotlib.pyplot
+            The default is None.
 
         Returns
         -------
         None
-            This method generates and saves discrepancy plots but does not return a value.
 
-        Notes
-        -----
-        - The discrepancy plot provides a visual comparison of sleep parameter differences
-          across devices.
-        - The method utilizes `self._DiscrepancyPlot__discrepancy_plot` for each device
-          and passes in the required parameters, including plot resolution and figure size.
-
-        Example
-        -------
-        >>> iclass.discrepancy_plot(plot_dpi=150, figsize=[8, 6])
-        Generating discrepancy plots for each device...
         """
         save_path = self._savepath_discrepancies_plot
 
@@ -62,9 +52,7 @@ class DiscrepancyPlot(SleepParameters):
         else:
             pass
 
-        self.calculate_sleep_parameters
-
-        for i in self.sleep_parameters_difference.loc[:, self._device_col].items():
+        for i in self.sleep_parameters_difference.loc[:, self._device_col].iteritems():
             self._DiscrepancyPlot__discrepancy_plot(
                 i,
                 save_path,
@@ -76,9 +64,9 @@ class DiscrepancyPlot(SleepParameters):
     @staticmethod
     def __discrepancy_plot(
             sleep_dev_in: DataFrame,
-            save_path: str,
+            save_path: Text,
             plot_dpi_in: int,
-            figsize: list[int]
+            figsize: List[int]
     ):
         """
         Plot discrepancy plot.
@@ -94,13 +82,13 @@ class DiscrepancyPlot(SleepParameters):
             sleep parameters of one device.
             The function is called through mapping
 
-        save_path : str
+        save_path : Text
             self._savepath_discrepancies_plot
 
         plot_dpi_in : int
             self.plot_dpi
 
-        figsize: list[int, int]
+        figsize: List[int, int]
             figsize to be passed to plt.subplots.
 
         Returns

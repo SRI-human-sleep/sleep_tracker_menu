@@ -1,17 +1,18 @@
 from warnings import warn
 from itertools import chain
+from typing import Dict, List, Text
 import pandas as pd
 
 
 def sanity_check(
         file_in_process: pd.DataFrame,
-        sleep_scores: dict,
-        reference_col: str,
-        device_col: list[str],
+        sleep_scoring: Dict,
+        reference_col: Text,
+        device_col: List[Text],
         drop_wrong_labels=True
 ):
     """
-    Finds any value that is not in self.sleep_scores.
+    Finds any value that is not in self.sleep_scoring.
 
     If such a value is found, it means that during any procedure
     that happened before feeding the dataframe to this pipeline,
@@ -23,9 +24,9 @@ def sanity_check(
     Parameters
     ----------
     file_in_process: pd.DataFrame
-    sleep_scores: dict
-    reference_col: str
-    device_col: list[str]
+    sleep_scoring: Dict
+    reference_col: Text
+    device_col: List[Text]
     drop_wrong_labels
 
     Returns
@@ -34,16 +35,12 @@ def sanity_check(
     wrong_rows: pd.DataFrame
     """
 
-    sleep_scores_chained = []
-    for item in map(lambda x: x[1], sleep_scores.items()):
-        if isinstance(item, str):
-            sleep_scores_chained.append(item)
-        else:
-            for it in item:
-                sleep_scores_chained.append(it)
+    sleep_scoring = list(
+        chain.from_iterable(map(lambda x: x[1], sleep_scoring.items()))
+    )
 
     ref_col_wrong_labels = set(file_in_process.loc[:, reference_col])
-    ref_col_wrong_labels = [i for i in ref_col_wrong_labels if i not in sleep_scores_chained]
+    ref_col_wrong_labels = [i for i in ref_col_wrong_labels if i not in sleep_scoring]
 
     dev_col_wrong_labels = list(map(lambda x: set(file_in_process.loc[:, x]), device_col))
     dev_col_wrong_labels = [i for i in dev_col_wrong_labels if i not in dev_col_wrong_labels]
@@ -80,7 +77,5 @@ def sanity_check(
 
     else:
         wrong_epochs = None
-
-    file_in_process.reset_index(drop=True, inplace=True)
 
     return file_in_process, wrong_epochs

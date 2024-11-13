@@ -1,124 +1,136 @@
 import os
 from datetime import datetime
+from typing import List, Text, TypedDict
 
 import pandas as pd
 
-from .hypnograms import HypnogramPlot
-from .confusion_matrix import ConfusionMatrix
-from .sleep_parameters import DiscrepancyPlot
-from .bland_altman import BlandAltmanPlot
-from .performance_metrics import PerformanceMetrics
+from hypnograms.hypnograms import HypnogramPlot
+from confusion_matrix.confusion_matrix import ConfusionMatrix
+from sleep_parameters.sleep_parameters import SleepParameters
+from bland_altman.bland_altman_plot import BlandAltmanPlot
+from performance_metrics.performance_metrics import PerformanceMetrics
 
-from .utils import sanity_check
-from .utils import save_directory_generation
+from utils.sanity_check import sanity_check
+from utils.save_directory_generation import save_directory_generation
 
 
 class SleepTrackerMenu(
-    DiscrepancyPlot, PerformanceMetrics, ConfusionMatrix, BlandAltmanPlot, HypnogramPlot
+    SleepParameters, PerformanceMetrics, ConfusionMatrix, BlandAltmanPlot, HypnogramPlot
 ):
     def __init__(
             self,
             file: pd.DataFrame,
-            id_col: str,
-            reference_col: str,
-            device_col: list,
-            save_path: str,
+            id_col: Text,
+            reference_col: Text,
+            device_col: List,
+            save_path: Text,
             drop_wrong_labels: bool = True,
-            sleep_scores: dict = None,
-            sleep_stages: dict = None,
+            sleep_scoring: TypedDict = None,
+            sleep_stages: TypedDict = None,
             epoch_length: int = 30,
             digit: int = 2,
             ci_level: float = 0.95,
             plot_dpi: int = 500,
             ci_bootstrapping: bool = False,
-            boot_method: str = 'basic',
+            boot_method: Text = 'basic',
             boot_n_resamples: int = 10000
     ) -> None:
         """
-        Initializes the SleepTrackerMenu class for evaluating sleep-tracker device performance.
+        Interface class used to evaluate the performance
+        of sleep-tracker devices.
 
-        This class enables the analysis of sleep-tracker devices by comparing their outputs
-        against a reference device, supporting epoch-by-epoch (EBE) and discrepancy analyses
-        as described in Menghini et al. (2021). It allows for comparison of multiple devices
-        against one reference device, with various options for result customization, including
-        bootstrapping confidence intervals and saving metrics and plots to organized directories.
+        It implements methods to conduct epoch-by-epoch (EBE)
+        and discrepancy analyzes, in accordance with Menghini et al.
+        (2021). DOI: 10.1093/sleep/zsaa170
 
-        Parameters
-        ----------
-        file : pd.DataFrame
-            DataFrame containing observations with columns for IDs, reference device, and evaluation devices.
-        id_col : str
-            Column name that contains unique IDs for each observation.
-        reference_col : str
-            Column name with measurements from the reference device.
-        device_col : list of str
-            List of column names, each representing measurements from a device being evaluated.
-        save_path : str
-            Directory where results and plots will be saved. Subdirectories are created automatically.
-        drop_wrong_labels : bool, optional
-            Whether to drop rows with labels inconsistent with `sleep_scoring`. Default is True.
-        sleep_scores : dict, optional
-            Dictionary specifying labels for sleep scoring stages, e.g., `{'Wake': 0, 'Sleep': 1}`.
-        sleep_stages : dict or bool, optional
-            Dictionary specifying REM and NREM stages, or False if no distinction is provided. For example,
-            `{'REM': 'R', 'NREM': ['N1', 'N2', 'N3']}`.
-        epoch_length : int, optional
-            Duration of each epoch in seconds. Default is 30.
-        digit : int, optional
-            Number of decimal places for rounding results. Default is 2.
-        ci_level : float, optional
-            Confidence interval level. Default is 0.95.
-        plot_dpi : int, optional
-            DPI setting for generated plots. Default is 500.
-        ci_bootstrapping : bool, optional
-            Whether to use bootstrapping for confidence intervals. Default is False.
-        boot_method : str, optional
-            Bootstrapping method used if `ci_bootstrapping` is True (e.g., 'basic', 'percentile'). Default is 'basic'.
-        boot_n_resamples : int, optional
-            Number of bootstrap resamples for confidence interval estimation if `ci_bootstrapping` is True. Default is 10000.
+        This class supports the evaluation of performance of multiple
+        devices (for example, two, three or more smartbands) against
+        one reference device (for example, Polysomnography).
+        Measurements of both the reference and devices under evaluation
+        must be temporally aligned to the reference and between each others
+        before being passed to the class. This implies that the number of
+        samples for the reference and each device must be equal. If you are
+        using sleep trackers with different sampling frequencies, you can either
+        resample your dataset or instantiate SleepTrackerMenu separately for
+        each device.
 
-        Attributes
-        ----------
-        file : pd.DataFrame
-            Processed DataFrame after validation.
-        wrong_epochs : pd.DataFrame
-            DataFrame containing rows with invalid labels, if `drop_wrong_labels` is True.
-        reference : pd.DataFrame
-            Subset of `file` with the reference column.
-        device : list of pd.DataFrame
-            List of DataFrames, each containing measurements from an evaluated device.
-        epoch_length : int
-            Length of each epoch in seconds.
-        ci_level : float
-            Confidence interval level.
-        plot_dpi : int
-            DPI setting for plot resolution.
-        save_name : str
-            Unique filename based on current timestamp, used to organize saved directories and files.
-        savepath_* : str
-            Paths for saving results, organized by metric type (e.g., confusion matrix, performance metrics).
+        This class does not automatically align time series. Time signals
+        are assumed to be already aligned by the user.
 
-        Raises
-        ------
-        ValueError
-            If required columns are missing, if unsupported labels are found in `file`, or if device measurements
-            are not aligned with the reference.
+        If you use this tool, please cite one of these
+        two publications:
+            1)
+            2)
 
-        Examples
-        --------
-        >>> sleep_menu = SleepTrackerMenu(
-        ...     file=data,
-        ...     id_col="ParticipantID",
-        ...     reference_col="Polysomnography",
-        ...     device_col=["Smartband1", "Smartband2"],
-        ...     save_path="./results",
-        ...     sleep_scores={"Wake": 0, "Sleep": 1},
-        ...     sleep_stages={"REM": "R", "NREM": ["N1", "N2", "N3"]}
-        ... )
+        Args:
+            file: pd.DataFrame
+                Two-dimensional table containing data to be analyzed.
+                Each row corresponds to an observation.
+                It must include at least three columns:
+                1)  a column containing the IDs for each observation.
+                    If multiple observations are collected for the same subject,
+                    ID must be repeated for each observation.
+                2)  a column containing measurements collected by the
+                    reference signal. Only one reference technique
+                    is supported by the routine.
+                3)  a column containing measurements collected by the
+                    device being evaluated. If the performance of multiple
+                    devices is assessed, measurements of each device must
+                    be passed in different columns.
+            drop_wrong_labels: bool
+                if True, any wrong values passed are dropped. If false,
+                values are not dropped but the routine might run
+                into errors. A wrong value is defined as a value
+                that is not represented in sleep_scoring
+            id_col: Text
+                header of the column containing IDs
+            reference_col: Text
+                header of the column containing
+                measurements collected by the device
+                used as reference
+            device_col: List
+                List containing the header(s) of the device(s)
+                whose performance is evaluated.
+            save_path: Text
+                directory in which save plots. Multiple
+                folders are automatically generated in
+                save_path.
+            sleep_scoring: TypedDict
+                dictionary specifying the label
+                assigned to Wake, and Sleep.
+            sleep_stages: TypedDict| bool
+                It can be either a boolean (False),
+                if the device(s) evaluated
+                do(es) not make distinction between
+                REM and NREM sleep.
+                Pass the following dictionary if
+                sleep distinction is supported:
+                sleep_stages = {
+                    'REM': "R",
+                    'NREM': ["N1", "N2", "N3"]
+                }
+            epoch_length: int
+                specifies the length of each epoch
+                in seconds.
+            digit: int
+                significant figures.
+            ci_level: float
+                lambda of the confidence interval.
+            plot_dpi: int
+                dpi at which plots will be saved
+            ci_bootstrapping: bool
+                specifies if the confidence interval
+                will be calculated through bootstrapping
+            boot_method: Text
+                type of bootstrap method to calculate confidence
+                intervals.
+            boot_n_resamples: int
+                number of resampling when calculating
+                confidence intervals via bootstrapping
         """
         self.file, self.wrong_epochs = sanity_check(
             file,
-            sleep_scores,
+            sleep_scoring,
             reference_col,
             device_col,
             drop_wrong_labels
@@ -136,7 +148,7 @@ class SleepTrackerMenu(
         )
         self._device_col = device_col
 
-        self.sleep_scores = sleep_scores
+        self.sleep_scoring = sleep_scoring
 
         self.epoch_length = epoch_length
 
@@ -191,7 +203,7 @@ class SleepTrackerMenu(
         )
         self._savepath_metrics_csv = os.path.join(
             savepath_metrics[1][1],
-            f'{save_name}'
+            f'{save_name}.csv'
         )
 
         savepath_standard_absolute_confusion_matrix = save_directory_generation(

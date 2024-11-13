@@ -1,6 +1,5 @@
 from pandas import concat
 
-
 def to_single_stage_performance_evaluation(
         to_metrics_in,
         stage_name,

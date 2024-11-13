@@ -1,48 +1,35 @@
 
 from os.path import join
+from typing import Text, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from seaborn import boxplot, heatmap, swarmplot
 
-from ..utils import confidence_interval_calculation
+from utils.confidence_interval import confidence_interval_calculation
 
 
 class PerformanceMetricsPlot:
     def performance_metrics_heatmap_plot(self):
         """
-        Generates heatmap plots for performance metrics for each device and sleep stage.
+        Plot the heatmap plot of the performance
+        metrics calculated per device.
 
-        This method visualizes the performance metrics calculated for each device
-        and sleep stage, as stored in `performance_metrics_each_sleep_stage`. The
-        resulting heatmaps provide an overview of various performance metrics per
-        device (rows) and sleep stage (columns), with values annotated in each cell.
-
-        Heatmaps are saved to the specified directory for each device-stage combination.
+        Applied to the property
+        performance_metrics_overall,
+        created in PerformanceMetrics.
+        Plots are generated for
+        every device (level 0 in axis=0 of
+        sle.fperformance_metrics_overall).
 
         Parameters
         ----------
-        self : SleepTrackerMenu
-            Instance of the SleepTrackerMenu class.
+        self
 
         Returns
         -------
         None
-            The function does not return a value. Plots are displayed and saved to the
-            appropriate directory.
-
-        Notes
-        -----
-        If analyzing many participants, this methods might produce figures that are too
-        large to be usable for either interpretation or publication. It better works with
-        smaller datasets.
-
-        Examples
-        --------
-        >>> iclass.performance_metrics_heatmap_plot()
-
         """
-        print('Generating heatmaps')
         df_to_plot = self.performance_metrics_each_sleep_stage
 
         device_level = set(df_to_plot.index.get_level_values('device'))
@@ -74,66 +61,41 @@ class PerformanceMetricsPlot:
                 ax_to_plot.set_title(f"{j}, {i}", fontsize=12)
 
                 plt.savefig(
-                    f"{self._savepath_metrics_plot}_{i}_{j}.png",
+                    f"self._savepath_metrics_plot_{i}_{j}.png",
                     dpi=self.plot_dpi
                 )
                 plt.tight_layout()
                 plt.show(block=True)
-
         return None
 
     def boxplot_swarmplot_performance_metrics_each_device(
             self,
             size=None,
-            figsize: tuple[int, int] = None,
+            figsize: Tuple[int, int] = None,
             title_text: str = '',
             title_fontsize: int = 10,
             axis_label_fontsize: int =11,
             axis_ticks_fontsize: int=13
     ):
         """
-        Generates boxplots with superimposed swarmplots for each device and metric.
+        Plots the boxplot with the
+        corresponding swarmplot superimposed.
 
-        This method plots the performance metrics by sleep stage, with a boxplot and
-        corresponding swarmplot for each metric (found in the first level of the
-        `performance_metrics_each_sleep_stage` DataFrame). Each plot is generated for
-        each device in the dataset.
+        Applied to the property
+        performance_metrics_each_sleep_stage.
+        Plots are generated for every
+        performance metrics retained in
+        the level 0 of a multilevel dataframe:
+        performance_metrics_each_sleep_stage.
 
         Parameters
         ----------
-        size : float, optional
-            Size of the swarmplot markers. Defaults to `5` if not specified.
-        figsize : tuple of int, optional
-            Figure size for the plot in inches as (width, height). Defaults to
-            (6.4, 4.8) if not specified.
-        title_text : str, optional
-            Title text for the plots. If left empty, the device name will be used as
-            the title. Default is an empty string.
-        title_fontsize : int, optional
-            Font size for the plot title. Default is `10`.
-        axis_label_fontsize : int, optional
-            Font size for the axis labels. Default is `11`.
-        axis_ticks_fontsize : int, optional
-            Font size for the axis tick labels. Default is `13`.
+        self
 
         Returns
         -------
         None
-            The function generates and saves plots but does not return a value.
-
-        Notes
-        -----
-        This function accesses the `performance_metrics_each_sleep_stage` property,
-        which contains performance metrics data organized in a multi-level index DataFrame.
-        The plots are saved to paths specified in `_savepath_performance_metrics_boxplots`.
-
-        Example
-        -------
-        >>> iclass.boxplot_swarmplot_performance_metrics_each_device()
-
-        Each plot is displayed and saved in the specified save directory for review.
         """
-        print('Generating boxplots with swarmplots for every metric.')
 
         if size is None:
             size = 5  # seaborn default
@@ -147,12 +109,13 @@ class PerformanceMetricsPlot:
 
         df_to_plot = self.performance_metrics_each_sleep_stage
 
+
+
         device_level = set(df_to_plot.index.get_level_values("device"))
         metric_level = set(df_to_plot.columns.get_level_values("metric"))
 
         for i in device_level:
             for j in metric_level:
-                print(f'    Plotting {i}: {j}')
                 to_boxplot = df_to_plot.loc[i, :]
                 to_boxplot = to_boxplot.stack()
                 to_boxplot = to_boxplot.xs(
@@ -174,7 +137,7 @@ class PerformanceMetricsPlot:
                     data=to_boxplot
                 )
                 swarmplot(
-                    edgecolor="white",
+                    edgecolors="white",
                     ax=ax_to_plot,
                     data=to_boxplot,
                     size=size
@@ -182,6 +145,8 @@ class PerformanceMetricsPlot:
 
                 plt.xticks(fontsize=axis_ticks_fontsize)
                 ax_to_plot.set_xlabel("Stage", fontsize=axis_label_fontsize)
+
+
                 ax_to_plot.set_ylim(0, 1.2)
                 plt.yticks(np.arange(0, 1.2, 0.2), fontsize=axis_ticks_fontsize)
                 ax_to_plot.set_ylabel(j, fontsize=axis_label_fontsize)
@@ -211,16 +176,15 @@ class PerformanceMetricsPlot:
                     dpi=self.plot_dpi
                 )
                 plt.show()
-
         return None
 
     @staticmethod
     def __proportional_metrics(
             to_boxplot_stat_in: pd.DataFrame,
-            stage_name: str,
+            stage_name: Text,
             ci_level: float,
             digit_in: int
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Calculates the proportional metrics.
 
@@ -235,7 +199,7 @@ class PerformanceMetricsPlot:
             pandas dataframe containing the performance metrics
             of every participant.
 
-        stage_name : str
+        stage_name : Text
             corresponds to the sleep stage processed.
 
         ci_level_in: float.
@@ -247,7 +211,7 @@ class PerformanceMetricsPlot:
 
         Returns
         -------
-        to_plot : tuple[pd.DataFrame, pd.DataFrame]
+        to_plot : Tuple[pd.DataFrame, pd.DataFrame]
             mean, std and ci.
 
         """

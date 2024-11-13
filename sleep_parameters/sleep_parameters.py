@@ -1,11 +1,14 @@
-from itertools import chain
+from typing import Any
+from itertools import repeat, chain
 from functools import reduce, cached_property
 
 import numpy as np
 import pandas as pd
 
+from sleep_parameters.discrepancy_plot import DiscrepancyPlot
 
-class SleepParameters:
+
+class SleepParameters(DiscrepancyPlot):
     def __init__(self):
         """
         Constructor used to preallocate
@@ -71,10 +74,9 @@ class SleepParameters:
         """
         id_col: str = self.id
         epoch_len_in: int = self.epoch_length
-        wake_label: str = self.sleep_scores.get("Wake")
+        wake_label: str = self.sleep_scoring.get("Wake")
 
         # calculating TST, WASO, SE, SOL
-
         ref_sleep_par: list[list[tuple]] = list(
             map(
                 lambda x: self._SleepParameters__par_calculation_each_recording(
@@ -241,7 +243,7 @@ class SleepParameters:
         Parameters
         ----------
         to_metrics : tuple[str, pd.Series]
-            tuple resulting from a groupby on file. The first element
+            Tuple resulting from a groupby on file. The first element
             contains the participant's name, the second element
             contains data of the single participant
         id_column : str
@@ -278,7 +280,7 @@ class SleepParameters:
 
         to_sol: pd.DataFrame = to_metrics.loc[to_metrics.index[0]:(sleep_onset-1)]
         sol: float = len(to_sol) * epoch_length/60
-        sol: tuple[any] = (participant_id, "SOL", sol)
+        sol: tuple[Any] = (participant_id, "SOL", sol)
         # returns the sleep onset latency
 
         to_tst: int = len(to_sleep_onset_offset)
@@ -286,17 +288,17 @@ class SleepParameters:
         se: float = to_tst/len(to_metrics) * 100
         # returns the total sleep time in minutes
         # as percentage
-        se: tuple[any] = (participant_id, "SE", se)
+        se: tuple[Any] = (participant_id, "SE", se)
 
         tst: float = to_tst * epoch_length/60
         # returns the total sleep time in minutes
-        tst: tuple[any] = (participant_id, "TST", tst)
+        tst: tuple[Any] = (participant_id, "TST", tst)
 
         to_waso: pd.DataFrame = to_metrics.loc[sleep_onset: sleep_offset]
         to_waso = to_waso.where(to_waso.iloc[:, 1] == wake_label).dropna()
         waso: int = len(to_waso)  # number of epochs scored as wake
         waso: float = waso*epoch_length/60  # returns the wake aftersleep onset in minutes
-        waso: tuple[any] = (participant_id, "WASO", waso)
+        waso: tuple[Any] = (participant_id, "WASO", waso)
 
         sleep_parameters: list[tuple] = [tst, se, waso, sol]
 
@@ -343,11 +345,11 @@ class SleepParameters:
     
         Parameters
         ----------
-        to_duration : tuple[str, pd.DataFrame]
+        to_duration : Tuple[Text, pd.DataFrame]
             tuple resulting from a .groupby called on self.reference or each
             element of self.device
             (applied through mapping)
-        id_col_in : str
+        id_col_in : Text
             self.id
         epoch_length : int
             self.epoch_length

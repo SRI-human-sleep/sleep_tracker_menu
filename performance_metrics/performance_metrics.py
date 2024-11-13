@@ -1,6 +1,7 @@
-import os
 from itertools import repeat
 from functools import cached_property
+from typing import Callable, Text
+
 import numpy as np
 import pandas as pd
 import scipy.stats as st
@@ -15,8 +16,8 @@ from sklearn.metrics import (
     recall_score
 )
 
-from .performance_metrics_plot import PerformanceMetricsPlot
-from ..utils import to_single_stage_performance_evaluation
+from performance_metrics.performance_metrics_plot import PerformanceMetricsPlot
+from utils.performance_metrics import to_single_stage_performance_evaluation
 
 
 class PerformanceMetrics(PerformanceMetricsPlot):
@@ -24,41 +25,17 @@ class PerformanceMetrics(PerformanceMetricsPlot):
     @cached_property
     def performance_metrics_overall(self) -> pd.DataFrame:
         """
-        Calculates performance metrics for each device.
+        for each device, the following  metrics are here calculated:
+        accuracy cohen's kappa, f1-score MCC NPV PPV sensitivity specificity
 
-        This property computes a range of performance metrics for each device, including:
-        accuracy, Cohen's kappa, F1-score, Matthews correlation coefficient (MCC),
-        negative predictive value (NPV), positive predictive value (PPV),
-        sensitivity, and specificity. The resulting metrics are rounded to the specified (during class construction)
-        number of decimal places and saved to a CSV file.
+         Parameters
+         ----------
+            self
 
-        Returns
-        -------
-        pd.DataFrame
-            A DataFrame containing the calculated metrics for each device, with devices
-        as rows and metric names as columns.
-
-        Notes
-        -----
-        The calculation for each device relies on `reference` as the ground truth and
-        `device` as the predicted values. Metrics are computed using the
-        `_PerformanceMetrics__metrics_calculation_each_device` method, which applies
-        `metrics_calculation_single_participant` to generate participant-level metrics
-        before aggregating them at the device level. The results are saved to the path
-        specified in `_savepath_metrics_plot`.
-        The metrics are calculated through scikit-learn methods.
-
-        Example
-        -------
-        >>> overall_metrics = iclass.performance_metrics_overall
-        >>> print(overall_metrics)
-        device,ID,accuracy,cohen_kappa,f1_score_micro,MCC,PPV_micro,sensitivity_micro
-        device_1,1,0.87,0.83,0.87,0.83,0.87,0.82
-        device_1,2,0.87,0.82,0.87,0.82,0.87,0.81
-        device_1,3,0.88,0.83,0.88,0.83,0.88,0.8
-        device_1,4,0.86,0.8,0.86,0.8,0.86,0.76
-        device_1,5,0.81,0.73,0.81,0.73,0.81,0.74
-        device_1,6,0.86,0.77,0.86,0.77,0.86,0.74
+         Returns
+         -------
+         pd.DataFrame
+             Calculated metrics
 
         """
         reference = self.reference
@@ -78,63 +55,26 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         metrics_overall = pd.concat(metrics_overall, axis=0)
 
         metrics_overall = metrics_overall.apply(lambda x: round(x, self.digit))
-        if not os.path.exists(self._savepath_metrics_csv):
-            os.makedirs(self._savepath_metrics_csv, exist_ok=True)
-        metrics_overall.to_csv(os.path.join(self._savepath_metrics_csv, 'performance_metrics_overall.csv'))
+        metrics_overall.to_csv(self._savepath_metrics_plot)
 
         return metrics_overall
 
     @cached_property
     def performance_metrics_each_sleep_stage(self) -> pd.DataFrame:
-
         """
-        Calculates the mean and 95% confidence interval (CI) for performance metrics per sleep stage.
+        for each device and participant, the following
+        metrics are here calculated: accuracy cohen's kappa,
+        f1-score MCC NPV PPV sensitivity specificity.
 
-        This property computes the mean and 95% CI for each performance metric across all participants
-        and devices, segmented by sleep stage. The resulting DataFrame provides a statistical summary
-        of each metric, including the lower and upper bounds of the CI.
-
+        Parameters
+        ----------
+            self
         Returns
         -------
         pd.DataFrame
-            A DataFrame containing the mean and 95% confidence intervals for each performance metric,
-            with columns:
-                - "mean": the mean of the metric across participants.
-                - "lower_ci": the lower bound of the 95% confidence interval.
-                - "upper_ci": the upper bound of the 95% confidence interval.
-
-        Notes
-        -----
-        - The calculation is based on the `performance_metrics_each_sleep_stage` property, excluding
-          any aggregate or summary rows.
-        - The 95% confidence interval for each metric is calculated using a t-distribution.
-        - This method rounds each result to three decimal places for clarity.
-
-        Example
-        -------
-        >>> metrics_summary = iclass.performance_metrics_mean_ci
-        >>> print(metrics_summary)
-
-        stage,N1, ..., W
-        metric,accuracy,cohen_kappa, ..., sensitivity,specificity
-        device ID,
-        device_1,1, ..., 0.79, 0.97
-        device_1,2, ..., 0.94, 0.98
-        device_1,3, ..., 0.98, 0.97
-        device_1,4, ..., 0.74, 0.99
-        device_1,5, ..., 0.81, 0.97
-        ...
-        device_2,1, ..., 0.94, 0.89
-        device_2,2, ..., 0.98, 0.75
-        device_2,3, ..., 0.96, 0.97
-        device_2,4, ..., 0.95, 0.94
-        device_2,all, ..., 0.93, 0.96
-
-        [352 rows x 35 columns]
-
-        This property provides a concise summary of the central tendency and variability
-        of each performance metric, aiding in the assessment of metric stability across sleep stages.
+            Calculated metrics
         """
+
         id_col = self.id
         reference = self.reference
         device = self.device
@@ -155,83 +95,19 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
         metrics_each_sleep_stage = pd.concat(metrics_each_sleep_stage, axis=0)
         metrics_each_sleep_stage = metrics_each_sleep_stage.apply(lambda x: round(x, self.digit))
-
-        if not os.path.exists(self._savepath_metrics_csv):
-            os.makedirs(self._savepath_metrics_csv, exist_ok=True)
-        metrics_each_sleep_stage.to_csv(os.path.join(self._savepath_metrics_csv, 'metrics_each_sleep_stage.csv'))
-
         return metrics_each_sleep_stage
 
     @property
-    def performance_metrics_mean_ci(self):
+    def performance_metrics_each_sleep_stage_moments(self):
         """
-        Computes the mean and 95% confidence interval (CI) for performance metrics across sleep stages.
-
-        This property calculates the mean and 95% confidence interval for each performance metric
-        (e.g., accuracy, sensitivity) across all participants and devices for each sleep stage.
-        The output provides a statistical summary that includes the mean as well as the lower and
-        upper bounds of the 95% CI for each metric.
+        Calculate mean and 95%CI of the performance metrics per sleep stage.
+        Parameters
+        ----------
+        self
 
         Returns
         -------
-        pd.DataFrame
-            A DataFrame with each performance metric as a row and three columns:
-                - "mean": the mean of the metric across participants.
-                - "lower_ci": the lower bound of the 95% confidence interval.
-                - "upper_ci": the upper bound of the 95% confidence interval.
 
-        Notes
-        -----
-        - The method relies on `performance_metrics_each_sleep_stage`, which contains
-          per-participant, per-device metrics segmented by sleep stage.
-        - The final row of the `performance_metrics_each_sleep_stage` DataFrame is excluded
-          from the calculation.
-        - The 95% CI for each metric is computed using a t-distribution and `scipy.stats.sem`
-          for the standard error, providing an estimate of metric variability.
-
-        Example
-        -------
-        >>> metrics_summary = iclass.performance_metrics_mean_ci
-        >>> print(metrics_summary)
-        stage,metric,mean,lower_ci,upper_ci
-        N1,accuracy,0.944,0.942,0.946
-        N1,cohen_kappa,0.363,0.348,0.377
-        N1,f1_score,0.390,0.376,0.405
-        N1,MCC,0.374,0.359,0.388
-        N1,PPV,0.431,0.412,0.450
-        N1,sensitivity,0.395,0.379,0.411
-        N1,specificity,0.972,0.970,0.974
-        N2,accuracy,0.874,0.868,0.880
-        N2,cohen_kappa,0.735,0.722,0.748
-        N2,f1_score,0.841,0.832,0.850
-        N2,MCC,0.742,0.730,0.754
-        N2,PPV,0.828,0.816,0.841
-        N2,sensitivity,0.866,0.857,0.876
-        N2,specificity,0.884,0.877,0.892
-        N3,accuracy,0.935,0.930,0.941
-        N3,cohen_kappa,0.811,0.796,0.826
-        N3,f1_score,0.852,0.839,0.865
-        N3,MCC,0.823,0.809,0.836
-        N3,PPV,0.908,0.895,0.922
-        N3,sensitivity,0.828,0.811,0.844
-        N3,specificity,0.979,0.976,0.982
-        R,accuracy,0.952,0.948,0.955
-        R,cohen_kappa,0.822,0.808,0.835
-        R,f1_score,0.850,0.837,0.862
-        R,MCC,0.828,0.816,0.841
-        R,PPV,0.888,0.877,0.898
-        R,sensitivity,0.835,0.818,0.852
-        R,specificity,0.977,0.975,0.979
-        W,accuracy,0.953,0.947,0.959
-        W,cohen_kappa,0.807,0.793,0.821
-        W,f1_score,0.832,0.820,0.844
-        W,MCC,0.819,0.807,0.831
-        W,PPV,0.774,0.757,0.791
-        W,sensitivity,0.930,0.924,0.936
-        W,specificity,0.957,0.950,0.964
-
-        This property provides an overview of the average performance metrics and their
-        confidence intervals, helping to assess metric stability across sleep stages.
         """
         performance_metrics = self.performance_metrics_each_sleep_stage
         performance_metrics = performance_metrics.droplevel(level=0, axis=0)
@@ -249,19 +125,14 @@ class PerformanceMetrics(PerformanceMetricsPlot):
         performance_metrics_ci.columns = ["lower_ci", "upper_ci"]
 
         performance_metrics_moments = pd.concat([performance_metrics_mean, performance_metrics_ci], axis=1)
-
-        if not os.path.exists(self._savepath_metrics_csv):
-            os.makedirs(self._savepath_metrics_csv, exist_ok=True)
-        performance_metrics_moments.to_csv(os.path.join(self._savepath_metrics_csv, 'performance_metrics_moments.csv'))
-
         return performance_metrics_moments
 
     @staticmethod
     def __metrics_calculation_each_device(
             reference_to_metrics: pd.DataFrame,
             device_to_metrics: pd.DataFrame,
-            metrics_func: object,
-            idc: str,
+            metrics_func: Callable,
+            idc: Text,
             sleep_stage: bool = False
     ) -> pd.DataFrame:
         """
@@ -274,16 +145,16 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
          Parameters
          ----------
-         reference_to_metrics : str
+         reference_to_metrics : Text
              self.reference
 
          device_to_metrics : pd.DataFrame
              one element of self.device
              (function applied to each element by iteration)
 
-         metrics_func : object
+         metrics_func : Callable
 
-         idc : str
+         idc : Text
             self.id
 
          sleep_stage:bool = False
@@ -353,13 +224,13 @@ class PerformanceMetrics(PerformanceMetricsPlot):
 
          Parameters
          ----------
-         participant_id : str
+         participant_id : Text
              participant_id
 
          to_metrics : pd.DataFrame
              Dataframe on which metrics will be calculated
 
-         id_column : str
+         id_column : Text
             self.id
 
          sleep_stage: bool = False

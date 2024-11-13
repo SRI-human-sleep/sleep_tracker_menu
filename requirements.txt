@@ -1,6 +1,0 @@
-pandas
-numpy
-seaborn
-scipy
-scikit-learn
-statsmodels == 0.14.4

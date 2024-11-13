@@ -1,26 +1,26 @@
 import os
-
+from typing import List, Text
 
 def save_directory_generation(
-        save_path: str,
-        dir_to_create: str,
-        subdirs: list = None
-) -> list:
+        save_path: Text,
+        dir_to_create: Text,
+        subdirs: List = None
+) -> List:
     """
 
         Parameters
         ----------
-        save_path : str
+        save_path : Text
             main directory for saving data
-        dir_to_create : str
+        dir_to_create : Text
 
-        subdirs : list
+        subdirs : List
             list of devices that undergo the performance evaluation.
 
 
         Returns
         -------
-        list
+        List
             saving directory and its subdirectories
     """
     dir_to_create = os.path.join(save_path, dir_to_create)

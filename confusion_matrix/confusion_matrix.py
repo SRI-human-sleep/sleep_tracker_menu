@@ -1,35 +1,34 @@
 from itertools import repeat
+from typing import List, Text, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
-from .confusion_matrix_plot import ConfusionMatrixPlot
+from confusion_matrix.confusion_matrix_plot import ConfusionMatrixPlot
 
-from ..utils import confidence_interval_calculation
+from utils.confidence_interval import confidence_interval_calculation
 
 
 class ConfusionMatrix(ConfusionMatrixPlot):
-        @property
-        def standard_absolute_confusion_matrix(self) -> list[tuple[str, pd.DataFrame]]:
-            """
-            Computes the absolute confusion matrix for each device.
 
-            This method calculates and returns the confusion matrix for each device in the
-            dataset based on the reference and scoring labels defined.
+        @property
+        def standard_absolute_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
+            """
+            Calculates the absolute confusion matrix.
+
+            Parameters
+            ----------
+            self
 
             Returns
             -------
-            list of tuple of (str, pd.DataFrame)
-                A list of tuples, where each tuple contains the device name as a string and
-                its corresponding confusion matrix as a DataFrame.
+            List[Tuple[Text, pd.DataFrame]]
 
-            Example
-            -------
-            >>> standard_absolute_cm = iclass.standard_absolute_confusion_matrix
+            confusion matrix for each device
 
             """
-            labels_to_confusion = [self.sleep_scores.get("Wake")] + self.sleep_scores.get("Sleep")
+            labels_to_confusion = [self.sleep_scoring.get("Wake")] + self.sleep_scoring.get("Sleep")
             standard_absolute_confusion_matrix = list(
                 map(
                     self._ConfusionMatrix__standard_confusion_matrix_each_device,
@@ -43,36 +42,22 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             return standard_absolute_confusion_matrix
 
         @property
-        def standard_normalized_confusion_matrix(self) -> list[tuple[str, pd.DataFrame]]:
+        def standard_normalized_confusion_matrix(self) -> List[Tuple[Text, pd.DataFrame]]:
             """
-            Computes the normalized confusion matrix for each device.
+            Calculates the absolute confusion matrix.
 
-            This method calculates the normalized confusion matrix for each device,
-            producing a matrix where each entry is scaled to reflect proportional values.
-            Each matrix is rounded to the number of decimal places specified by `digit`.
+            Parameters
+            ----------
+            self
 
             Returns
             -------
-            list of tuple of (str, pd.DataFrame)
-                A list of tuples, where each tuple contains:
-                    - The device name as a string.
-                    - A DataFrame containing the normalized confusion matrix for that device,
-                      with each value rounded to the specified number of decimal places.
+            List[Tuple[Text, pd.DataFrame]]
 
-            Notes
-            -----
-            The normalized confusion matrix is calculated based on the `sleep_scoring` attribute,
-            which provides labels for "Wake" and "Sleep" states. The function uses
-            `_ConfusionMatrix__standard_confusion_matrix_each_device` to generate each device’s
-            confusion matrix, and saves each matrix to a path defined in
-            `_savepath_standard_normalized_confusion_matrix_xlsx`.
-
-            Example
-            -------
-            >>> normalized_matrices = iclass.standard_normalized_confusion_matrix
+            confusion matrix for each device
 
             """
-            labels_to_confusion = [self.sleep_scores.get("Wake")] + self.sleep_scores.get("Sleep")
+            labels_to_confusion = [self.sleep_scoring.get("Wake")] + self.sleep_scoring.get("Sleep")
             standard_normalized_confusion_matrix = list(
                 map(
                     self._ConfusionMatrix__standard_confusion_matrix_each_device,
@@ -93,40 +78,27 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             return standard_normalized_confusion_matrix
 
         @property
-        def proportional_confusion_matrix(self) -> list[tuple[str, tuple[pd.DataFrame, pd.DataFrame]]]:
+        def proportional_confusion_matrix(self) -> List[Tuple[Text, Tuple[pd.DataFrame, pd.DataFrame]]]:
             """
-            Computes the proportional confusion matrix for each device.
+            Calculates the proportional confusion matrix.
 
-            This property calculates the proportional confusion matrix for each device,
-            returning a numeric matrix along with an annotation matrix for visualization.
-            The first DataFrame in each tuple contains the numeric values, while the second
-            DataFrame provides the annotated strings suitable for display with `sns.heatmap`.
+            Parameters
+            ----------
+            self
 
             Returns
             -------
-            list of tuple of (str, tuple of (pd.DataFrame, pd.DataFrame))
-                A list of tuples, where each tuple contains:
-                    - The device name as a string.
-                    - A tuple of two DataFrames:
-                        - The first DataFrame with the numeric proportional confusion matrix.
-                        - The second DataFrame with the annotated confusion matrix, intended for
-                          display in heatmaps.
+                List[Tuple[Text, Tuple[pd.DataFrame, pd.DataFrame]]]
 
-            Notes
-            -----
-            The calculation relies on the `sleep_scoring` attribute to define "Wake" and "Sleep" labels,
-            and `reference` as the ground truth data. The annotated DataFrame is designed for use with
-            the `annot` argument in `sns.heatmap` within
-            `ConfusionMatrixPlot.proportional_confusion_matrix_plot`.
+                The first DataFrame in the tuple contains
+                the numeric confusion matrix, while the second
+                DataFrame contains the confusion matrix
+                as string. The latter will be passed to sns.heatmap
+                as annot argument in
+                ConfusionMatrixPlot.proportional_confusion_matrix_plot
 
-            This method also saves each device's confusion matrix to an Excel file, including both the
-            numeric and annotated matrices. The path for saving is defined in `_savepath_proportional_confusion_matrix_xlsx`.
-
-            Example
-            -------
-            >>> proportional_matrices = iclass.proportional_confusion_matrix
             """
-            labels_to_confusion = [self.sleep_scores.get("Wake")] + self.sleep_scores.get("Sleep")
+            labels_to_confusion = [self.sleep_scoring.get("Wake")] + self.sleep_scoring.get("Sleep")
 
             device = self.device
             reference = self.reference
@@ -173,7 +145,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
                     dev_name, dev,
                     to_proportional_confusion_matrix,
                     individual_level_matrix, to_stat,
-                    mean, annot_plot, annot_excel
+                    mean, annot_plot, annot_excel#, path_to_xlsx
                 )
 
             return output
@@ -182,8 +154,8 @@ class ConfusionMatrix(ConfusionMatrixPlot):
         def __standard_confusion_matrix_each_device(
                 ref: pd.DataFrame,
                 dev: pd.DataFrame,
-                labels_to_confusion: list[str],
-                save_path: str,
+                labels_to_confusion: List[Text],
+                save_path: Text,
                 absolute: bool = True
         ):
             """
@@ -195,15 +167,15 @@ class ConfusionMatrix(ConfusionMatrixPlot):
                 self.reference
             dev : pd.DataFrame
                 one element of self.device
-            labels_to_confusion: list[str]
+            labels_to_confusion: List[Text]
                 list containing self.scoring items.
                 Passed to heatmap for labeling.
-            savepath: str
+            savepath: Text
                 path for saving the matrix in xlsx
 
             Returns
             -------
-            list[str, np.ndarray]
+            List[Text, np.ndarray]
                 calculated absolute confusion matrix for the overall sample
 
             """
@@ -240,8 +212,8 @@ class ConfusionMatrix(ConfusionMatrixPlot):
 
         @staticmethod
         def __individual_level_matrix_calculation(
-                to_individual_level_matrix: tuple[str, pd.DataFrame],
-                labels_to_confusion: list[str]
+                to_individual_level_matrix: Tuple[Text, pd.DataFrame],
+                labels_to_confusion: List[Text]
         ) -> pd.DataFrame:
             """
             Calculates the individual level matrix.
@@ -252,12 +224,12 @@ class ConfusionMatrix(ConfusionMatrixPlot):
 
             Parameters
             ----------
-            to_individual_level_matrix: tuple[str, pd.DataFrame]
+            to_individual_level_matrix: Tuple[Text, pd.DataFrame]
                 first element: id
                 second element: reference and device values of a
                 single participant.
 
-            labels_to_confusion: list[str]
+            labels_to_confusion: List[Text]
                 list containing self.scoring items.
                 Passed to heatmap for labeling.
             Returns
@@ -291,7 +263,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
                 ci_level: int,
                 digit: int,
                 ci_bootstrapping: bool,
-                boot_method: str,
+                boot_method: Text,
                 boot_n_resamples: int
         ):
             """
@@ -313,7 +285,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
 
             Returns
             -------
-            tuple[pd.DataFrame, pd.DataFrame]
+            Tuple[pd.DataFrame, pd.DataFrame]
 
             mean values (for heatmap)
             and annotations for heatmap.
@@ -354,6 +326,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             std = round(std * 100, digit)
             std = std.reindex(columns_to_reindexing)
 
+
             ci = map(
                 lambda x:
                     confidence_interval_calculation(
@@ -365,7 +338,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
                         ci_bootstrapping=ci_bootstrapping,
                         boot_method=boot_method,
                         boot_n_resamples=boot_n_resamples
-                    ),
+                ),
                 to_stat
             )
 
@@ -376,7 +349,7 @@ class ConfusionMatrix(ConfusionMatrixPlot):
             # follows the creation of annot dataframe
             # to be passed to heatmap function
 
-            annot_mean_excel = mean.astype(str) + '\n'
+            annot_mean_excel = + mean.astype(str) + '\n'
 
             annot_mean_plot = mean.astype(str) + '\n'
             annot_std = ' (' + std.astype(str) + ')\n'

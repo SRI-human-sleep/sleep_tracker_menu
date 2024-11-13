@@ -1,5 +1,6 @@
 import os
 from math import inf
+from typing import Text
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -29,83 +30,84 @@ class BlandAltmanPlot(BlandAltmanParameters):
             plot_dpi: int = None
     ):
         """
-        Generate Bland-Altman plots with confidence intervals, allowing for bias and limits of agreement
-        visualization across specified parameters and devices.
+        Produce Bland Altman plot, modeling
+        the bias and limits of agreement
+        according to Bland and Altman 1999
+        Args:
+            log_transform: bool
+                if to produce plots
+                on log-transformed data
+                The default is False
+            parameter_to_plot: list[str]
+                if a list of parameters is passed,
+                only specified parameters will be plotted.
+                if parameter_to_plot is not specified (default),
+                all parameters are plotted
+                The default is None
+            device_to_plot: list[str]
+                if a list of devices is passed,
+                only specified devices will be plotted.
+                if device_to_plot is not specified (default),
+                all devices are plotted
+                The default is None
+            ci_level: float
+                confidence level for confidence interval
+                estimation. if not specified, ci_level specified
+                when constructing SleepTrackerMenu is used.
+                The default is None
+            title_fontsize: int
+                title fontsize
+                The default is
+            axis_label_fontsize: int
+                axis labels fontsize
+                The default is 11
+            axis_ticks_fontsize: int
+                axis labels fontsize
+                The default is 13
+            ci_bootstrapping: str
+                if to calculate confidence
+                intervals via bootstrapping
+                If not specified, confidence
+                intervals will be calculated
+                according to what specified
+                when constructing SleepTrackerMenu
+                The default is None
+            boot_n_resamples: int
+                number of resamples when
+                confidence intervals are calculated
+                via bootstrapping.
+                If not specified, the number of
+                boostrapping used to produce
+                Bland Altman plots will be the
+                one specified when constructing
+                SleepTrackerMenu
+                The default is None
+            joint_plot_ratio: int
+                Ratio of joint axes height
+                to marginal axes height
+                The default is 6
+            joint_plot_height: int
+                Size of the figure.
+                The default is 10
+            augmentation_factor_ylimits: float
+                used to widen y limits
+                the formula applied is:
+                max value along yaxis * (1+augmentation_factor_limit)
+                The default is 0.3
+            augmentation_factor_xlimits: float
+                Not supported yet
+                The default is 0.1
+            plot_dpi: int
+                dots per inch when saving
+                Bland-Altman plots.
+                if not specified, what
+                specified when constructing
+                SleepTrackerMenu is used.
+                The default is None
 
-        This function produces Bland-Altman plots to visualize agreement between sleep-tracking devices
-        and reference data, following the Bland and Altman method (1999). The plots allow for device-by-device
-        comparison, confidence interval adjustments, and display settings.
+        Returns:
 
-        Parameters
-        ----------
-        log_transform : bool, optional
-            Whether to apply log transformation to data before plotting. Defaults to False.
-
-        parameter_to_plot : list[str], optional
-            list of parameters to include in the plots. If None, all available parameters are plotted.
-
-        device_to_plot : list[str], optional
-            list of device names to plot. If None, all devices are included.
-
-        ci_level : float, optional
-            Confidence level for interval estimation, overriding the class default if specified.
-
-        title_fontsize : int, optional
-            Font size for plot titles. Default is 10.
-
-        axis_label_fontsize : int, optional
-            Font size for axis labels. Default is 11.
-
-        axis_ticks_fontsize : int, optional
-            Font size for axis ticks. Default is 13.
-
-        ci_bootstrapping : str, optional
-            Method to calculate confidence intervals using bootstrapping. If None, the default method from
-            the class configuration is used.
-
-        boot_n_resamples : int, optional
-            Number of bootstrap resamples for confidence interval calculations, if `ci_bootstrapping`
-            is specified. If None, uses the class-configured number of resamples.
-
-        joint_plot_ratio : int, optional
-            Ratio of joint plot area height to marginal plot height. Default is 6.
-
-        joint_plot_height : int, optional
-            Height of the joint plot figure. Default is 10.
-
-        augmentation_factor_ylimits : float, optional
-            Factor to expand y-axis limits based on the range of plotted values, calculated as:
-            `max_value_y * (1 + augmentation_factor_ylimits)`. Default is 0.3.
-
-        augmentation_factor_xlimits : float, optional
-            Factor to expand x-axis limits (currently unsupported). Default is 0.1.
-
-        plot_dpi : int, optional
-            DPI for saved plot images. If None, uses the class-defined DPI setting.
-
-        Returns
-        -------
-        None
-            The function saves Bland-Altman plots to a specified directory and displays each plot
-            with the defined configuration.
-
-        Notes
-        -----
-        - Plots confidence intervals based on Bland and Altman’s method, visualizing both proportional bias
-          and heteroskedasticity where applicable.
-        - If `log_transform` is True, data is transformed logarithmically, particularly useful for data
-          with skewed distributions.
-        - `augmentation_factor_ylimits` enables flexible expansion of the y-axis, aiding visual comparison
-          across devices by increasing the y-limits proportionally.
-        - Confidence intervals are drawn based on either standard methods or bootstrapping (if specified),
-          depending on `ci_bootstrapping` and `boot_n_resamples`.
-
-        Example
-        -------
-        >>> iclass.bland_altman_plot()
         """
-
-        print('Generating Bland-Altman plots')
 
         if plot_dpi is None:
             plot_dpi = self.plot_dpi
@@ -155,7 +157,7 @@ class BlandAltmanPlot(BlandAltmanParameters):
                 axis=0
             )
 
-        par_plot = self.calculate_bland_altmann_parameters(
+        par_plot = self.calculate_parameters(
             reference_to_scatter,
             device_to_scatter,
             ci_level,
@@ -248,14 +250,11 @@ class BlandAltmanPlot(BlandAltmanParameters):
                 # of joint_plot
 
                 joint_plot.ax_joint.set_xticks(
-                    list(map(int, joint_plot.ax_joint.get_xticks())),
-                    list(map(lambda x: str(int(x)), joint_plot.ax_joint.get_xticks())),
+                    joint_plot.ax_joint.get_xticks().round(0),
                     fontsize=axis_ticks_fontsize
-            )
-
+                )
                 joint_plot.ax_joint.set_yticks(
-                    list(map(int, joint_plot.ax_joint.get_yticks())),
-                    list(map(lambda y: str(int(y)), joint_plot.ax_joint.get_yticks())),
+                    joint_plot.ax_joint.get_yticks().round(0),
                     fontsize=axis_ticks_fontsize
                 )
 
@@ -311,18 +310,18 @@ class BlandAltmanPlot(BlandAltmanParameters):
 
 
     @staticmethod
-    def __unit_of_measurment_to_labels(par_name: str):
+    def __unit_of_measurment_to_labels(par_name: Text):
         """
         Automatically detects the type of parameter passed.
 
         it's used to set the correct unit of measurment to be
         displayed between parentheses in x ad y axis' labels.
         Args:
-            par_names:str
+            par_names: Text
             par_names assigned in bland_altman_plot
 
         Returns:
-            unit_of_measurment:str
+            unit_of_measurment: Text
             passed later to xlabels and ylabels
             to print the unit of measurment between
             parentheses.

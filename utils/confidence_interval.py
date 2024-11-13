@@ -1,10 +1,12 @@
+from typing import Callable, Text, Tuple
+
 import pandas as pd
 from numpy import nanmean
 from scipy.stats import bootstrap, sem, t
 
 
 def calculate_t_ci(
-        function_to_ci: object,
+        function_to_ci: Callable,
         data_to_ci: pd.Series,
         ci_level: float
 ):
@@ -13,7 +15,7 @@ def calculate_t_ci(
     confidence interval.
     It's called in confidence_interval_calculation function.
     Args:
-        function_to_ci: object
+        function_to_ci: Callable
         data_to_ci: pd.Series
         ci_level: float
 
@@ -35,15 +37,15 @@ def calculate_t_ci(
 
 def confidence_interval_calculation(
         to_ci: pd.DataFrame,
-        stage_device_name: str,
-        function_to_ci: object = nanmean,
+        stage_device_name: Text,
+        function_to_ci: Callable = nanmean,
         return_annot_df: bool = False,
         ci_level: float = 0.95,
         digit: int = 2,
         ci_bootstrapping: bool = False,
-        boot_method: str = "basic",
+        boot_method: Text = "basic",
         boot_n_resamples: int = 100000
-) -> tuple:
+) -> Tuple:
 
     """
     Calculates the confidence interval (ci for short).
@@ -53,16 +55,16 @@ def confidence_interval_calculation(
     Args:
         to_ci: pd.DataFrame
             Dataframe to confidence interval
-        stage_device_name: str
+        stage_device_name: Text
             Stage or device on which data the ci is calculated.
             Argument named after the fact that in bland-altman functions,
             the CI is calculated on single device, while in performance
             metrics the function is applied to every single sleep stage.
-        function_to_ci: object
+        function_to_ci: Callable
             callable of moment.
             The default is nanmean.
         return_annot_df: bool
-            if true, the function returns a tuple
+            if true, the function returns a Tuple
             having as first element the ci as float,
             and as second element the ci formatted as
             string. The DataFrame formatted as string
@@ -79,7 +81,7 @@ def confidence_interval_calculation(
         ci_bootstrapping: bool
             if True, ci is calculated through bootstrapping.
             The default is False
-        boot_method: str
+        boot_method: Text
             type of bootstrapping applied.
             Supported: 'percentile', 'basic', 'BCa'.
             The default is 'basic'.

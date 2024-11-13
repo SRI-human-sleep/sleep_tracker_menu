@@ -1,88 +1,66 @@
 import os
 from itertools import product, repeat
+from typing import Dict, List, Text, Tuple
 
 import pandas as pd
 import matplotlib.pyplot as plt
 
 
 class HypnogramPlot:
-
     def hypnogram_plot(
             self,
-            reference: pd.Series | list[pd.Series] = None,
-            sleep_scoring: dict = None,
-            sleep_stages: dict = None,
-            colors_for_difference: list = None,
-            figsize: list = None,
+            reference: pd.Series | List[pd.Series] = None,
+            sleep_scoring: Dict = None,
+            sleep_stages: Dict = None,
+            colors_for_difference: List = None,
+            figsize: List = None,
             plot_dpi: int = None,
-            save_path: str = None
+            save_path: Text = None
     ):
         """
-        Plot hypnograms.
 
-        This function visualizes sleep scoring data as hypnograms, allowing comparison between devices
-        and one or more reference datasets. The function supports multi-device and multi-reference
-        plotting, custom discrepancy highlighting, and configurable figure size and DPI.
+        Plots the hypnogram.
 
-        Parameters
-        ----------
-        reference : pd.Series or list[pd.Series], optional
-            Reference sleep scoring data for comparison, provided as a single series or list of series
-            for multi-device/multi-standard comparisons. If None, defaults to what specified in SleepTrackerMenu constructor.
+        Args:
+            reference: pd.Series | List[pd.Series]
+                Reference(s) to be plotted. if a list
+                is passed, each device and reference is
+                 plotted. (multi-gold standard
+                comparison).
+                The default is None.
+            sleep_scoring
+            sleep_stages
+            colors_for_difference: List
+                Epoch-by-Epoch discrepancies
+                between device and reference(s)
+                are highlighted with vertical
+                lines. This argument allows to
+                specify the list of colors that
+                are used highlight the discrepancies.
+                If anything is passed, a default
+                list is used.
+                The default is None.
+            figsize: List[int, int]
+                specifies the dimension of the plot.
+                If anything is passed, figsize is
+                set to be the matplotlib.pyplot's default.
+                The default is None.
+            plot_dpi: int
+                specifies the dpi of the plot. If
+                nothing is passed, self.plot_dpi
+                passed in InterfaceClass.
+                The default is None.
+            save_path: Text
+                specifies the path in which to save
+                the hypnograms. If anything is passed,
+                save_path is set to equal to
+                self._savepath_hypnograms_plot.
+                The default is None.
 
-        sleep_scoring : dict, optional
-            dictionary containing labels for sleep scoring stages, including at minimum the "Wake" and 
-            "Sleep" stages. Defaults to what specified in SleepTrackerMenu constructor.
-
-        sleep_stages : dict, optional
-            dictionary specifying detailed sleep stages, typically including "REM" and "NREM" stages.
-            If None, sleep stages are assumed to be indistinguishable within non-REM sleep. Defaults
-            to what specified in SleepTrackerMenu constructor.
-
-        colors_for_difference : list[str], optional
-            list of colors to highlight epoch-by-epoch discrepancies between device and reference data.
-            Colors are assigned to each reference in the plot. If None, the following list of colors is used: ['orange',
-            'lime', 'darkturquoise', 'coral', 'violet', 'cornflowerblue', 'lightslategray']
-
-        figsize : list[int, int], optional
-            Size of the figure in inches as [width, height]. If None, the default Matplotlib size 
-            [6.4, 4.8] is used.
-
-        plot_dpi : int, optional
-            Resolution of the plot in DPI (dots per inch). If None, defaults to what set when
-            constructing SleepTrackerMenu.
-
-        save_path : str, optional
-            Path where the generated hypnogram plot will be saved. If None, defaults to 
-            hypnogram_plot folder within the save folder specified when constructing SleepTrackerMenu. All hypnograms
-            will be saved into a folder named after the timestamp at which the pipeline was run to allow comparisons
-            between multiple runs.
-
-        Returns
-        -------
-        None
-            This function modifies class attributes to store plot configurations and produces plots
-            for each device-reference comparison without returning a value.
-
-        Notes
-        -----
-        - `reference` may include multiple gold-standard references for multi-standard comparisons,
-          facilitating thorough visual analyses.
-        - The `colors_for_difference` parameter uses a default color palette suitable for up to seven
-          comparisons; adding more references may result in reduced color distinction.
-        - The function organizes stages from "Wake" to the deepest NREM stages to standardize plot
-          appearance across multiple comparisons.
-        - If `sleep_stages` is None, it assumes that the device does not differentiate NREM stages.
-          Otherwise, the specified "REM" and "NREM" stages are plotted.
-
-        Example
-        -------
-        >>> iclass.hypnogram_plot()
+        Returns:
+            None
 
         """
-
-        print('Generating hypnograms.')
-
         if reference is None:
             reference = self.reference
         else:
@@ -128,7 +106,7 @@ class HypnogramPlot:
             self._HypnogramPlot__savepath_hypnograms_plot = save_path
 
         if sleep_scoring is None:
-            sleep_scoring = self.sleep_scores
+            sleep_scoring = self.sleep_scoring
         else:
             pass
 
@@ -195,7 +173,7 @@ class HypnogramPlot:
         if isinstance(self.sleep_stages, dict) is False:
             # if sleep_stages is False, it's assumed that
             # the device under study does not allow any distinction between
-            # NREM and REM sleep. Sleep Stages specified in self.sleep_scores.get("SLeep")
+            # NREM and REM sleep. Sleep Stages specified in self.sleep_scoring.get("SLeep")
             # are assumed to be ordered in descending order of sleep depth, that is
             # from the lightest (N1) to the deepest sleep stage (N3).
 
@@ -238,45 +216,17 @@ class HypnogramPlot:
         # It will be used later to generate a plot for
         # each device against all gold standards.
 
-        [self._plot_hypnogam_participant(j) for i in hypno_grouped for j in i]
+        [self.plot_hypnogam_participant(j) for i in hypno_grouped for j in i]
         return None
 
-    def _plot_hypnogam_participant(self, participant_to_hypnogram: tuple[str, pd.DataFrame]):
+    def plot_hypnogam_participant(self, participant_to_hypnogram: Tuple[Text, pd.DataFrame]):
         """
-        Plot the hypnogram for a single participant with highlighted REM stages and device-reference discrepancies.
+        Plots the hypnogram for one participant.
 
-        This function generates a hypnogram plot for a specified participant, showing sleep stages over time,
-        and includes highlighted REM sleep stages if present. It also marks discrepancies between a device's
-        sleep scoring data and reference(s) with vertical lines in different colors for visual comparison.
+        Args:
+            participant_to_hypnogram: Tuple[Text, pd.DataFrame]
 
-        Parameters
-        ----------
-        participant_to_hypnogram : tuple[str, pd.DataFrame]
-            A tuple where the first element is the participant's identifier (str) and the second element is a
-            DataFrame containing the sleep scoring data. The DataFrame columns should include the device's sleep
-            scoring data as the first column, followed by reference scoring data columns.
-
-        Returns
-        -------
-        None
-            This function saves the hypnogram plot to the specified path in the class configuration
-            and displays the plot. No value is returned.
-
-        Notes
-        -----
-        - If REM stage is available, it is plotted slightly above the main hypnogram line using red asterisks for
-          clarity.
-        - Discrepancies between the device and each reference are represented by vertical lines, colored according
-          to the mapping in `self._HypnogramPlot__colors_for_difference`.
-        - Y-axis labels indicate sleep stages, ordered according to `self._HypnogramPlot__stages_to_hypno_ordered`.
-        - The plot is saved as a PNG image with the participant's ID and device name in the filename.
-
-        Raises
-        ------
-        None
-            This function does not raise exceptions; however, it requires that the class's configuration
-            variables (`_HypnogramPlot__plot_dpi`, `_HypnogramPlot__figsize`, `_HypnogramPlot__savepath_hypnograms_plot`)
-            are correctly initialized prior to calling.
+        Returns:
 
         """
 
@@ -291,7 +241,7 @@ class HypnogramPlot:
             map(
                 self.calculate_discrepancy_scoring,
                 repeat(device_to_diff),
-                data_to_hypno.iloc[:, 1:].items()
+                data_to_hypno.iloc[:, 1:].iteritems()
             ),
             axis=1
         )
@@ -308,7 +258,7 @@ class HypnogramPlot:
         )
 
         count = 0
-        for i in data_to_hypno.items():
+        for i in data_to_hypno.iteritems():
             participant_name = i[1].index[0]
             to_plot = i[1]
             to_plot.index = list(range(len(i[1])))
@@ -340,7 +290,7 @@ class HypnogramPlot:
                 pass
 
             if count == 0:
-                for j in differences_gs_device.items():
+                for j in differences_gs_device.iteritems():
                     differences_plot = j[1]
                     differences_plot = differences_plot.where(differences_plot != 0).dropna()
 
@@ -410,7 +360,7 @@ class HypnogramPlot:
             df_to_index: pd.DataFrame
                 dataframe to new index.
 
-            id_col: str
+            id_col: Text
                 self.id
 
         Returns: pd.DataFrame
