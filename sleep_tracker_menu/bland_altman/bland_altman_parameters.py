@@ -1,4 +1,3 @@
-from math import sqrt
 from itertools import repeat
 
 import numpy as np
@@ -16,7 +15,7 @@ class BlandAltmanParameters:
         self._augmentation_factor_ylimits = None
         self._augmentation_factor_xlimits = None
 
-    def calculate_parameters(
+    def calculate_bland_altmann_parameters(
             self,
             reference: pd.Series,
             device: pd.DataFrame,
@@ -117,8 +116,8 @@ class BlandAltmanParameters:
 
         alpha_to_ci: float = 1 - self._ci_level
 
-        lower_confint: float = results.conf_int(alpha=alpha_to_ci)[0][0]
-        higher_confint: float = results.conf_int(alpha=alpha_to_ci)[1][0]
+        lower_confint: float = results.conf_int(alpha=alpha_to_ci).iloc[0, 0]
+        higher_confint: float = results.conf_int(alpha=alpha_to_ci).iloc[1, 0]
 
         if lower_confint > 0 or higher_confint < 0:  # proportional_bias was
             # found. the function will return parameters to plot
@@ -181,6 +180,7 @@ class BlandAltmanParameters:
                 (par_to_plot_in + -2.46 * std) + (-2.46 * prediction_hetersked)
 
         y_lim = pd.concat([params_lower_loa, params_upper_loa], axis=0)
+
         y_lim = y_lim.max() * (1 + self._augmentation_factor_ylimits)
 
         x_lim_left = ref_to_plot_in.min()
